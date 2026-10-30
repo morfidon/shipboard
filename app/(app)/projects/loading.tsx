@@ -1,3 +1,14 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function Loading() {
-  return <p>Loading projects...</p>;
+  return (
+    <div>
+      <Skeleton className="h-8 w-40" />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+    </div>
+  );
 }

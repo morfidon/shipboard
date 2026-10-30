@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div>
       <h2 className="text-xl font-bold">Project not found</h2>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-muted-foreground">
         This project does not exist, or it was deleted.
       </p>
       <Link href="/projects" className="mt-4 inline-block underline">

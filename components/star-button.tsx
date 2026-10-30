@@ -1,6 +1,8 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
 
 function subscribe(onChange: () => void) {
   window.addEventListener("storage", onChange);
@@ -21,12 +23,14 @@ export function StarButton({ projectId }: { projectId: string }) {
   }
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={toggle}
       aria-pressed={starred}
-      className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
     >
-      {starred ? "★ Starred" : "☆ Star"}
-    </button>
+      <Star className={starred ? "fill-current" : ""} />
+      {starred ? "Starred" : "Star"}
+    </Button>
   );
 }

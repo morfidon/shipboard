@@ -1,6 +1,8 @@
 "use client";
 
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function Collapsible({
   title,
@@ -13,13 +15,15 @@ export function Collapsible({
 
   return (
     <section>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="text-sm font-medium text-zinc-600 dark:text-zinc-400"
       >
-        {open ? "▾" : "▸"} {title}
-      </button>
+        {open ? <ChevronDown /> : <ChevronRight />}
+        {title}
+      </Button>
       {open && <div className="mt-2">{children}</div>}
     </section>
   );

@@ -7,7 +7,7 @@ export default function AppLayout({
 }) {
   return (
     <div className="flex flex-1">
-      <aside className="w-56 border-r border-zinc-200 p-4 dark:border-zinc-800">
+      <aside className="w-56 border-r bg-muted/40 p-4">
         <p className="mb-6 text-lg font-bold">Shipboard</p>
         <nav className="flex flex-col gap-2">
           <Link href="/dashboard">Dashboard</Link>

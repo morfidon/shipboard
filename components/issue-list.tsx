@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Issue } from "@/lib/data";
 
 const statusLabels = {
@@ -6,20 +8,36 @@ const statusLabels = {
   done: "Done",
 };
 
+const statusVariants = {
+  todo: "outline",
+  in_progress: "default",
+  done: "secondary",
+} as const;
+
 export function IssueList({ issues }: { issues: Issue[] }) {
   return (
     <ul className="flex flex-col gap-2">
       {issues.map((issue) => (
         <li
           key={issue.id}
-          className="flex justify-between rounded border border-zinc-200 p-3 dark:border-zinc-800"
+          className="flex items-center justify-between rounded-lg border p-3"
         >
           <span>{issue.title}</span>
-          <span className="text-sm text-zinc-500">
+          <Badge variant={statusVariants[issue.status]}>
             {statusLabels[issue.status]}
-          </span>
+          </Badge>
         </li>
       ))}
     </ul>
+  );
+}
+
+export function IssueListSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      <Skeleton className="h-12" />
+      <Skeleton className="h-12" />
+      <Skeleton className="h-12" />
+    </div>
   );
 }
