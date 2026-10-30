@@ -45,14 +45,22 @@ const issues: Issue[] = [
   { id: "9", projectId: "3", title: "Upgrade the database server", status: "todo" },
 ];
 
+// Pretend we talk to a real database, which always takes a moment.
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function getProjects() {
+  await wait(500);
   return projects;
 }
 
 export async function getProject(id: string) {
+  await wait(300);
   return projects.find((project) => project.id === id);
 }
 
 export async function getIssues(projectId: string) {
+  await wait(1500);
   return issues.filter((issue) => issue.projectId === projectId);
 }
