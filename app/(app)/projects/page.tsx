@@ -14,7 +14,7 @@ export default async function ProjectsPage() {
             <Link href={`/projects/${project.id}`} className="hover:underline">
               {project.name}
             </Link>
-            <StarButton />
+            <StarButton projectId={project.id} />
           </li>
         ))}
       </ul>
