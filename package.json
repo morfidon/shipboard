@@ -2,11 +2,15 @@
   "name": "shipboard",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "node --env-file=.env db/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
