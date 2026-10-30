@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function AppLayout({
   children,
 }: {
@@ -8,8 +10,8 @@ export default function AppLayout({
       <aside className="w-56 border-r border-zinc-200 p-4 dark:border-zinc-800">
         <p className="mb-6 text-lg font-bold">Shipboard</p>
         <nav className="flex flex-col gap-2">
-          <a href="/dashboard">Dashboard</a>
-          <a href="/projects">Projects</a>
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/projects">Projects</Link>
         </nav>
       </aside>
       <main className="flex-1 p-8">{children}</main>
