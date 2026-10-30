@@ -4,9 +4,11 @@ import { buttonVariants } from "@/components/ui/button";
 export function Pagination({
   page,
   pageCount,
+  hrefFor,
 }: {
   page: number;
   pageCount: number;
+  hrefFor: (page: number) => string;
 }) {
   const link = buttonVariants({ variant: "outline", size: "sm" });
 
@@ -17,12 +19,12 @@ export function Pagination({
       </span>
       <div className="flex gap-2">
         {page > 1 && (
-          <Link href={`?page=${page - 1}`} className={link}>
+          <Link href={hrefFor(page - 1)} className={link}>
             Previous
           </Link>
         )}
         {page < pageCount && (
-          <Link href={`?page=${page + 1}`} className={link}>
+          <Link href={hrefFor(page + 1)} className={link}>
             Next
           </Link>
         )}

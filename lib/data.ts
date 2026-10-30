@@ -19,6 +19,11 @@ export type Issue = {
   assignee: string | null;
 };
 
+export type Person = {
+  id: string;
+  name: string;
+};
+
 export type IssueFilters = {
   statuses?: IssueStatus[];
   assigneeId?: string;
@@ -61,6 +66,13 @@ export const getProject = cache(
     return row;
   },
 );
+
+export async function getUsers(): Promise<Person[]> {
+  return db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .orderBy(user.name);
+}
 
 export async function getIssues(
   projectId: string,
