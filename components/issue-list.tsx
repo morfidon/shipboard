@@ -20,9 +20,14 @@ export function IssueList({ issues }: { issues: Issue[] }) {
       {issues.map((issue) => (
         <li
           key={issue.id}
-          className="flex items-center justify-between rounded-lg border p-3"
+          className="flex items-center justify-between gap-4 rounded-lg border p-3"
         >
-          <span>{issue.title}</span>
+          <div className="flex flex-col">
+            <span>{issue.title}</span>
+            <span className="text-sm text-muted-foreground">
+              {issue.assignee ?? "Unassigned"}
+            </span>
+          </div>
           <Badge variant={statusVariants[issue.status]}>
             {statusLabels[issue.status]}
           </Badge>

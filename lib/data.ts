@@ -1,4 +1,9 @@
 import "server-only";
+import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { db } from "@/db";
+import { issue, issueStatus, project, user } from "@/db/schema";
+
+export type IssueStatus = (typeof issueStatus.enumValues)[number];
 
 export type Project = {
   id: string;
@@ -6,61 +11,72 @@ export type Project = {
   description: string;
 };
 
-export type IssueStatus = "todo" | "in_progress" | "done";
-
 export type Issue = {
   id: string;
-  projectId: string;
   title: string;
   status: IssueStatus;
+  assignee: string | null;
 };
 
-const projects: Project[] = [
-  {
-    id: "1",
-    name: "Website relaunch",
-    description: "A new marketing site with a blog.",
-  },
-  {
-    id: "2",
-    name: "Mobile app",
-    description: "The first version of the iOS and Android app.",
-  },
-  {
-    id: "3",
-    name: "Infrastructure",
-    description: "Servers, backups and monitoring.",
-  },
-];
+export type IssueFilters = {
+  statuses?: IssueStatus[];
+  assigneeId?: string;
+  page?: number;
+};
 
-const issues: Issue[] = [
-  { id: "1", projectId: "1", title: "Design the new home page", status: "done" },
-  { id: "2", projectId: "1", title: "Write the first blog post", status: "in_progress" },
-  { id: "3", projectId: "1", title: "Add a contact form", status: "todo" },
-  { id: "4", projectId: "2", title: "Build the sign-in screen", status: "in_progress" },
-  { id: "5", projectId: "2", title: "Set up push notifications", status: "todo" },
-  { id: "6", projectId: "2", title: "Publish a test build", status: "todo" },
-  { id: "7", projectId: "3", title: "Automate daily backups", status: "done" },
-  { id: "8", projectId: "3", title: "Add uptime monitoring", status: "in_progress" },
-  { id: "9", projectId: "3", title: "Upgrade the database server", status: "todo" },
-];
+export const PAGE_SIZE = 10;
 
-// Pretend we talk to a real database, which always takes a moment.
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export async function getProjects(): Promise<Project[]> {
+  return db
+    .select({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+    })
+    .from(project)
+    .orderBy(project.name);
 }
 
-export async function getProjects() {
-  await wait(500);
-  return projects;
+export async function getProject(id: string): Promise<Project | undefined> {
+  const [row] = await db
+    .select({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+    })
+    .from(project)
+    .where(eq(project.id, id));
+  return row;
 }
 
-export async function getProject(id: string) {
-  await wait(300);
-  return projects.find((project) => project.id === id);
-}
+export async function getIssues(
+  projectId: string,
+  { statuses, assigneeId, page = 1 }: IssueFilters = {},
+): Promise<{ items: Issue[]; total: number }> {
+  const where = and(
+    eq(issue.projectId, projectId),
+    isNull(issue.archivedAt),
+    statuses ? inArray(issue.status, statuses) : undefined,
+    assigneeId ? eq(issue.assigneeId, assigneeId) : undefined,
+  );
 
-export async function getIssues(projectId: string) {
-  await wait(1500);
-  return issues.filter((issue) => issue.projectId === projectId);
+  const [items, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: issue.id,
+        title: issue.title,
+        status: issue.status,
+        assignee: user.name,
+      })
+      .from(issue)
+      .leftJoin(user, eq(issue.assigneeId, user.id))
+      .where(where)
+      // Newest first. The id breaks ties, so the order is always the same.
+      .orderBy(desc(issue.createdAt), desc(issue.id))
+      .limit(PAGE_SIZE)
+      .offset((page - 1) * PAGE_SIZE),
+    db.select({ total: count() }).from(issue).where(where),
+  ]);
+
+  return { items, total };
 }
