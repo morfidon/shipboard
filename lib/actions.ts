@@ -35,6 +35,7 @@ export async function createIssueAction(
   }
 
   await createIssue({ projectId, ...result.data });
+  refresh();
   redirect(`/projects/${projectId}`);
 }
 
