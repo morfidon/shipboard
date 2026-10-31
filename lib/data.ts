@@ -105,3 +105,15 @@ export async function getIssues(
 
   return { items, total };
 }
+
+export async function createIssue(values: {
+  projectId: string;
+  title: string;
+  description: string;
+}): Promise<{ id: string }> {
+  const [row] = await db
+    .insert(issue)
+    .values(values)
+    .returning({ id: issue.id });
+  return row;
+}
