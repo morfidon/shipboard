@@ -41,9 +41,10 @@ export async function createIssueAction(
 export async function updateIssueStatusAction(
   issueId: string,
   status: IssueStatus,
-) {
+): Promise<{ error?: string }> {
   // Our menu offers only the three statuses. parse() throws for anything else.
   await updateIssueStatus(issueId, statusSchema.parse(status));
   // The data changed, so render the current page again with fresh data.
   refresh();
+  return {};
 }
