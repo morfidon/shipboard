@@ -30,7 +30,9 @@ export function parseIssueSearch(params: SearchParams): IssueSearch {
         ? (status as StatusFilter)
         : undefined,
     assignee: assignee || undefined,
-    page: page >= 1 ? page : 1,
+    // A safe integer is a whole number small enough to count exactly.
+    // Infinity and 1e21 aren't, and the database refuses them.
+    page: Number.isSafeInteger(page) && page >= 1 ? page : 1,
   };
 }
 

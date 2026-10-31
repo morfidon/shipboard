@@ -31,6 +31,11 @@ describe("parseIssueSearch", () => {
     expect(parseIssueSearch({ page: "-3" }).page).toBe(1);
     expect(parseIssueSearch({ page: "banana" }).page).toBe(1);
   });
+
+  it("uses page 1 for numbers too big to be a page", () => {
+    expect(parseIssueSearch({ page: "Infinity" }).page).toBe(1);
+    expect(parseIssueSearch({ page: "1e21" }).page).toBe(1);
+  });
 });
 
 describe("issuesHref", () => {
