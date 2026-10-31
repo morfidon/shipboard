@@ -3,6 +3,7 @@ import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import { issue, issueStatus, project, user } from "@/db/schema";
+import { getCurrentUser } from "@/lib/current-user";
 
 export type IssueStatus = (typeof issueStatus.enumValues)[number];
 
@@ -32,7 +33,12 @@ export type IssueFilters = {
 
 export const PAGE_SIZE = 10;
 
+// Every read starts with getCurrentUser(): it checks the session for real,
+// and sends anyone without one to the sign-in page.
+
 export async function getProjects(): Promise<Project[]> {
+  await getCurrentUser();
+
   return db
     .select({
       id: project.id,
@@ -51,6 +57,8 @@ const uuidPattern =
 // the database is asked only once.
 export const getProject = cache(
   async (id: string): Promise<Project | undefined> => {
+    await getCurrentUser();
+
     if (!uuidPattern.test(id)) {
       return undefined;
     }
@@ -68,6 +76,8 @@ export const getProject = cache(
 );
 
 export async function getUsers(): Promise<Person[]> {
+  await getCurrentUser();
+
   return db
     .select({ id: user.id, name: user.name })
     .from(user)
@@ -78,6 +88,8 @@ export async function getIssues(
   projectId: string,
   { statuses, assigneeId, page = 1 }: IssueFilters = {},
 ): Promise<{ items: Issue[]; total: number; page: number }> {
+  await getCurrentUser();
+
   const where = and(
     eq(issue.projectId, projectId),
     isNull(issue.archivedAt),

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getCurrentUser } from "@/lib/current-user";
 import { getIssue, getIssues, getProject, getProjects } from "@/lib/data";
 import {
   createIssue,
@@ -6,6 +7,18 @@ import {
   createProject,
   createUser,
 } from "./factories";
+
+// Every read asks who is signed in. Tests make no request, so a mock answers.
+vi.mock("@/lib/current-user", () => ({ getCurrentUser: vi.fn() }));
+
+beforeEach(async () => {
+  const organization = await createOrganization();
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: "maya",
+    name: "Maya Chen",
+    organizationId: organization.id,
+  });
+});
 
 describe("getProject", () => {
   it("finds each project by its id", async () => {
