@@ -1,18 +1,6 @@
-import { Badge } from "@/components/ui/badge";
+import { IssueStatusMenu } from "@/components/issue-status-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Issue } from "@/lib/data";
-
-const statusLabels = {
-  todo: "To do",
-  in_progress: "In progress",
-  done: "Done",
-};
-
-const statusVariants = {
-  todo: "outline",
-  in_progress: "default",
-  done: "secondary",
-} as const;
 
 export function IssueList({ issues }: { issues: Issue[] }) {
   return (
@@ -28,9 +16,7 @@ export function IssueList({ issues }: { issues: Issue[] }) {
               {issue.assignee ?? "Unassigned"}
             </span>
           </div>
-          <Badge variant={statusVariants[issue.status]}>
-            {statusLabels[issue.status]}
-          </Badge>
+          <IssueStatusMenu issueId={issue.id} status={issue.status} />
         </li>
       ))}
     </ul>

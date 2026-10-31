@@ -13,3 +13,5 @@ export const issueSchema = z.object({
     .trim()
     .max(5000, "Keep the description to 5,000 characters or fewer."),
 });
+
+export const statusSchema = z.enum(["todo", "in_progress", "done"]);

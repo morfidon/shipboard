@@ -1,9 +1,10 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createIssue } from "@/lib/data";
-import { issueSchema } from "@/lib/schemas";
+import { createIssue, updateIssueStatus, type IssueStatus } from "@/lib/data";
+import { issueSchema, statusSchema } from "@/lib/schemas";
 
 export type FormState = {
   errors?: { title?: string[]; description?: string[] };
@@ -35,4 +36,14 @@ export async function createIssueAction(
 
   await createIssue({ projectId, ...result.data });
   redirect(`/projects/${projectId}`);
+}
+
+export async function updateIssueStatusAction(
+  issueId: string,
+  status: IssueStatus,
+) {
+  // Our menu offers only the three statuses. parse() throws for anything else.
+  await updateIssueStatus(issueId, statusSchema.parse(status));
+  // The data changed, so render the current page again with fresh data.
+  refresh();
 }

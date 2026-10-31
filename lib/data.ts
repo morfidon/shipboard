@@ -117,3 +117,7 @@ export async function createIssue(values: {
     .returning({ id: issue.id });
   return row;
 }
+
+export async function updateIssueStatus(issueId: string, status: IssueStatus) {
+  await db.update(issue).set({ status }).where(eq(issue.id, issueId));
+}
