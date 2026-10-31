@@ -135,6 +135,42 @@ describe("updateIssueStatusAction", () => {
   });
 });
 
+// The same person, in our organization, with a different role.
+function signedInAs(role: string) {
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: "maya",
+    name: "Maya Chen",
+    organizationId,
+    role,
+  });
+}
+
+describe("updateIssueStatusAction, role by role", () => {
+  it.each(["owner", "admin", "member"])(
+    "lets the %s change a status",
+    async (role) => {
+      signedInAs(role);
+      const project = await createProject({ organizationId });
+      const ours = await createIssue({ projectId: project.id });
+
+      expect(await updateIssueStatusAction(ours.id, "done")).toEqual({});
+      expect(await statusOf(ours.id)).toBe("done");
+    },
+  );
+
+  it("refuses a viewer", async () => {
+    signedInAs("viewer");
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    await expect(updateIssueStatusAction(ours.id, "done")).rejects.toThrow(
+      "A viewer can't update issues.",
+    );
+    expect(await statusOf(ours.id)).toBe("todo");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
 describe("updateIssueAction", () => {
   it("saves the changes and goes back to the project", async () => {
     const project = await createProject({ organizationId });
