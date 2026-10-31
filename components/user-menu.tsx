@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { signOutAction } from "@/lib/auth-actions";
+import { getTeamName } from "@/lib/data";
 
 // Who is signed in? Better Auth finds the session cookie in the request
 // and looks the session up in the database.
@@ -22,6 +23,7 @@ export async function UserMenu() {
       <div>
         <p className="font-medium">{session.user.name}</p>
         <p className="text-muted-foreground">{session.user.email}</p>
+        <p className="text-muted-foreground">Team: {await getTeamName()}</p>
       </div>
       <form action={signOutAction}>
         <Button type="submit" variant="outline" size="sm">

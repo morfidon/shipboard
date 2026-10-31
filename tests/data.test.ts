@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentUser } from "@/lib/current-user";
-import { getIssue, getIssues, getProject, getProjects } from "@/lib/data";
+import {
+  getIssue,
+  getIssues,
+  getProject,
+  getProjects,
+  getUsers,
+} from "@/lib/data";
 import {
   createIssue,
+  createMember,
   createOrganization,
   createProject,
   createUser,
@@ -11,19 +18,27 @@ import {
 // Every read asks who is signed in. Tests make no request, so a mock answers.
 vi.mock("@/lib/current-user", () => ({ getCurrentUser: vi.fn() }));
 
+let organizationId: string;
+
 beforeEach(async () => {
-  const organization = await createOrganization();
+  organizationId = (await createOrganization()).id;
   vi.mocked(getCurrentUser).mockResolvedValue({
     id: "maya",
     name: "Maya Chen",
-    organizationId: organization.id,
+    organizationId,
   });
 });
 
+// A project in the signed-in person's team. createProject() alone puts it
+// in a new organization: someone else's.
+function ourProject(values: { name?: string } = {}) {
+  return createProject({ ...values, organizationId });
+}
+
 describe("getProject", () => {
   it("finds each project by its id", async () => {
-    const website = await createProject({ name: "Website relaunch" });
-    const mobile = await createProject({ name: "Mobile app" });
+    const website = await ourProject({ name: "Website relaunch" });
+    const mobile = await ourProject({ name: "Mobile app" });
 
     expect(await getProject(website.id)).toEqual({
       id: website.id,
@@ -40,12 +55,18 @@ describe("getProject", () => {
   it("returns undefined for an id that isn't a UUID", async () => {
     expect(await getProject("999")).toBeUndefined();
   });
+
+  it("hides another team's project", async () => {
+    const theirs = await createProject({ name: "Customer portal" });
+
+    expect(await getProject(theirs.id)).toBeUndefined();
+  });
 });
 
 describe("getProjects", () => {
   it("lists the projects by name", async () => {
-    await createProject({ name: "Mobile app" });
-    await createProject({ name: "Infrastructure" });
+    await ourProject({ name: "Mobile app" });
+    await ourProject({ name: "Infrastructure" });
 
     const projects = await getProjects();
 
@@ -54,12 +75,44 @@ describe("getProjects", () => {
       "Mobile app",
     ]);
   });
+
+  it("never lists another team's projects", async () => {
+    await ourProject({ name: "Website relaunch" });
+    await createProject({ name: "Customer portal" });
+
+    const projects = await getProjects();
+
+    expect(projects.map((p) => p.name)).toEqual(["Website relaunch"]);
+  });
+});
+
+describe("getUsers", () => {
+  it("lists only the people in the team", async () => {
+    const lena = await createUser({ name: "Lena Fischer" });
+    const gina = await createUser({ name: "Gina Park" });
+    await createMember({ organizationId, userId: lena.id });
+    await createMember({ userId: gina.id });
+
+    const people = await getUsers();
+
+    expect(people.map((p) => p.name)).toEqual(["Lena Fischer"]);
+  });
 });
 
 describe("getIssues", () => {
+  it("never shows another team's issues", async () => {
+    const theirs = await createProject({ name: "Customer portal" });
+    await createIssue({ projectId: theirs.id, title: "Add invoice downloads" });
+
+    const { items, total } = await getIssues(theirs.id);
+
+    expect(items).toEqual([]);
+    expect(total).toBe(0);
+  });
+
   it("never shows another project's issues", async () => {
-    const website = await createProject({ name: "Website relaunch" });
-    const mobile = await createProject({ name: "Mobile app" });
+    const website = await ourProject({ name: "Website relaunch" });
+    const mobile = await ourProject({ name: "Mobile app" });
     await createIssue({ projectId: website.id, title: "Add a 404 page" });
     await createIssue({ projectId: mobile.id, title: "Fix the login screen" });
 
@@ -70,7 +123,7 @@ describe("getIssues", () => {
   });
 
   it("hides archived issues", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     await createIssue({ projectId: project.id, title: "Add a 404 page" });
     await createIssue({
       projectId: project.id,
@@ -85,7 +138,7 @@ describe("getIssues", () => {
   });
 
   it("filters by one status or several", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     await createIssue({
       projectId: project.id,
       title: "Add a 404 page",
@@ -118,7 +171,7 @@ describe("getIssues", () => {
   });
 
   it("filters by assignee and shows their name", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     const maya = await createUser({ name: "Maya Chen" });
     const tom = await createUser({ name: "Tom Novak" });
     await createIssue({
@@ -149,7 +202,7 @@ describe("getIssues", () => {
   });
 
   it("splits the issues into pages of ten", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     const createdIds: string[] = [];
     for (let n = 1; n <= 12; n++) {
       const created = await createIssue({
@@ -171,7 +224,7 @@ describe("getIssues", () => {
   });
 
   it("shows the last page for a page past the end", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     for (let n = 1; n <= 12; n++) {
       await createIssue({ projectId: project.id, title: `Issue ${n}` });
     }
@@ -184,7 +237,7 @@ describe("getIssues", () => {
   });
 
   it("puts the newest issue first", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     await createIssue({
       projectId: project.id,
       title: "Older",

@@ -15,6 +15,9 @@ export default async function ProjectsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold">Projects</h1>
+      {projects.length === 0 && (
+        <p className="mt-2 text-muted-foreground">No projects yet.</p>
+      )}
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
           <li key={project.id}>

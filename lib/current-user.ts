@@ -1,10 +1,7 @@
 import "server-only";
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { db } from "@/db";
-import { organization } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 export type CurrentUser = {
@@ -21,15 +18,16 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
     redirect("/sign-in");
   }
 
-  // For now, everyone who signs in works at Acme.
-  const [acme] = await db
-    .select({ id: organization.id })
-    .from(organization)
-    .where(eq(organization.slug, "acme"));
+  // The team they work in right now. Every new session gets one
+  // (see databaseHooks in lib/auth.ts).
+  const organizationId = session.session.activeOrganizationId;
+  if (!organizationId) {
+    redirect("/sign-in");
+  }
 
   return {
     id: session.user.id,
     name: session.user.name,
-    organizationId: acme.id,
+    organizationId,
   };
 });

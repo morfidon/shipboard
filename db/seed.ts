@@ -2,19 +2,20 @@ import { hashPassword } from "better-auth/crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema.ts";
 
-const { user, account, organization, project, issue } = schema;
+const { user, account, organization, member, project, issue } = schema;
 const db = drizzle(process.env.DATABASE_URL!, { schema });
 
 // Everyone in the seed signs in with this made-up password. Only for the
 // database on your own computer.
 const DEMO_PASSWORD = "shipboard-demo";
 
+// Acme's team, with each person's role.
 const people = [
-  { name: "Maya Chen", email: "maya@example.com" },
-  { name: "Tom Novak", email: "tom@example.com" },
-  { name: "Lena Fischer", email: "lena@example.com" },
-  { name: "Sam Ortiz", email: "sam@example.com" },
-  { name: "Priya Nair", email: "priya@example.com" },
+  { name: "Maya Chen", email: "maya@example.com", role: "owner" },
+  { name: "Tom Novak", email: "tom@example.com", role: "admin" },
+  { name: "Lena Fischer", email: "lena@example.com", role: "member" },
+  { name: "Sam Ortiz", email: "sam@example.com", role: "member" },
+  { name: "Priya Nair", email: "priya@example.com", role: "member" },
 ];
 
 type Status = "todo" | "in_progress" | "done";
@@ -91,35 +92,48 @@ await db.transaction(async (tx) => {
   await tx.delete(organization);
   await tx.delete(user);
 
+  // Better Auth keeps passwords in the account table, hashed, the same
+  // way sign-up stores them.
+  async function addPasswords(userIds: string[]) {
+    await tx.insert(account).values(
+      await Promise.all(
+        userIds.map(async (id) => ({
+          id: crypto.randomUUID(),
+          userId: id,
+          providerId: "credential",
+          accountId: id,
+          password: await hashPassword(DEMO_PASSWORD),
+        })),
+      ),
+    );
+  }
+
   const users = await tx
     .insert(user)
     .values(
-      people.map((person) => ({
+      people.map(({ name, email }) => ({
         id: crypto.randomUUID(),
-        ...person,
+        name,
+        email,
         emailVerified: true,
       })),
     )
     .returning({ id: user.id });
-
-  // Better Auth keeps passwords in the account table, hashed, the same
-  // way sign-up stores them.
-  await tx.insert(account).values(
-    await Promise.all(
-      users.map(async ({ id }) => ({
-        id: crypto.randomUUID(),
-        userId: id,
-        providerId: "credential",
-        accountId: id,
-        password: await hashPassword(DEMO_PASSWORD),
-      })),
-    ),
-  );
+  await addPasswords(users.map(({ id }) => id));
 
   const [acme] = await tx
     .insert(organization)
     .values({ id: crypto.randomUUID(), name: "Acme", slug: "acme" })
     .returning({ id: organization.id });
+
+  await tx.insert(member).values(
+    people.map((person, i) => ({
+      id: crypto.randomUUID(),
+      organizationId: acme.id,
+      userId: users[i].id,
+      role: person.role,
+    })),
+  );
 
   let age = 0;
   for (const p of projects) {
@@ -147,12 +161,29 @@ await db.transaction(async (tx) => {
     age += p.issues.length;
   }
 
-  // A second customer, to check that one organization can't change
-  // another one's issues. Our five people work at Acme.
+  // A second customer, to check that one organization can't see or change
+  // another one's issues. Gina Park runs it.
   const [globex] = await tx
     .insert(organization)
     .values({ id: crypto.randomUUID(), name: "Globex", slug: "globex" })
     .returning({ id: organization.id });
+
+  const [gina] = await tx
+    .insert(user)
+    .values({
+      id: crypto.randomUUID(),
+      name: "Gina Park",
+      email: "gina@example.com",
+      emailVerified: true,
+    })
+    .returning({ id: user.id });
+  await addPasswords([gina.id]);
+  await tx.insert(member).values({
+    id: crypto.randomUUID(),
+    organizationId: globex.id,
+    userId: gina.id,
+    role: "owner",
+  });
 
   const [portal] = await tx
     .insert(project)
@@ -177,11 +208,12 @@ await db.transaction(async (tx) => {
 const counts = await Promise.all([
   db.$count(user),
   db.$count(organization),
+  db.$count(member),
   db.$count(project),
   db.$count(issue),
 ]);
 console.log(
-  `Seeded ${counts[0]} users, ${counts[1]} organizations, ${counts[2]} projects and ${counts[3]} issues.`,
+  `Seeded ${counts[0]} users, ${counts[1]} organizations, ${counts[2]} memberships, ${counts[3]} projects and ${counts[4]} issues.`,
 );
 
 await db.$client.end();

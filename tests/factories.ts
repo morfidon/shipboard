@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { issue, organization, project, user } from "@/db/schema";
+import { issue, member, organization, project, user } from "@/db/schema";
 
 // Small helpers that put one row into the test database. Every column has
 // a sensible default, so a test only writes down the values it cares about.
@@ -22,6 +22,25 @@ export async function createUser(
   const [row] = await db
     .insert(user)
     .values({ id, name: "Maya Chen", email: `${id}@example.com`, ...values })
+    .returning();
+  return row;
+}
+
+export async function createMember(
+  values: Partial<typeof member.$inferInsert> = {},
+) {
+  const organizationId =
+    values.organizationId ?? (await createOrganization()).id;
+  const userId = values.userId ?? (await createUser()).id;
+  const [row] = await db
+    .insert(member)
+    .values({
+      id: crypto.randomUUID(),
+      role: "member",
+      ...values,
+      organizationId,
+      userId,
+    })
     .returning();
   return row;
 }

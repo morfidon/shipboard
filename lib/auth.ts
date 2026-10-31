@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { organization } from "better-auth/plugins";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 
@@ -24,7 +26,57 @@ export const auth = betterAuth({
       console.log(`Verify ${user.email}: ${url}`);
     },
   },
+  databaseHooks: {
+    session: {
+      create: {
+        // Every session starts in one of the person's teams.
+        before: async (session) => {
+          const activeOrganizationId = await firstTeamOf(session.userId);
+          return { data: { ...session, activeOrganizationId } };
+        },
+      },
+    },
+  },
   // In a Server Action, the cookies Better Auth sets go to the browser.
-  // Keep it the last plugin.
-  plugins: [nextCookies()],
+  // Keep nextCookies() the last plugin.
+  plugins: [organization(), nextCookies()],
 });
+
+// The person's oldest team. Someone who has none yet gets a new one,
+// with them as its owner.
+async function firstTeamOf(userId: string): Promise<string> {
+  // One transaction: the team and its owner are made together, or not at
+  // all. Locking the person's row first makes a second sign-in at the same
+  // moment wait, and then find this team instead of making another one.
+  return db.transaction(async (tx) => {
+    const [person] = await tx
+      .select({ name: schema.user.name })
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .for("update");
+
+    const [first] = await tx
+      .select({ organizationId: schema.member.organizationId })
+      .from(schema.member)
+      .where(eq(schema.member.userId, userId))
+      .orderBy(asc(schema.member.createdAt))
+      .limit(1);
+    if (first) {
+      return first.organizationId;
+    }
+
+    const organizationId = crypto.randomUUID();
+    await tx.insert(schema.organization).values({
+      id: organizationId,
+      name: `${person.name}'s team`,
+      slug: organizationId,
+    });
+    await tx.insert(schema.member).values({
+      id: crypto.randomUUID(),
+      organizationId,
+      userId,
+      role: "owner",
+    });
+    return organizationId;
+  });
+}

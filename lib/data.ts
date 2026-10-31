@@ -2,7 +2,14 @@ import "server-only";
 import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
-import { issue, issueStatus, project, user } from "@/db/schema";
+import {
+  issue,
+  issueStatus,
+  member,
+  organization,
+  project,
+  user,
+} from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 
 export type IssueStatus = (typeof issueStatus.enumValues)[number];
@@ -34,10 +41,19 @@ export type IssueFilters = {
 export const PAGE_SIZE = 10;
 
 // Every read starts with getCurrentUser(): it checks the session for real,
-// and sends anyone without one to the sign-in page.
+// and sends anyone without one to the sign-in page. Then it reads only
+// what belongs to their team.
+
+// The ids of one organization's projects, as a subquery.
+function projectsOf(organizationId: string) {
+  return db
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.organizationId, organizationId));
+}
 
 export async function getProjects(): Promise<Project[]> {
-  await getCurrentUser();
+  const { organizationId } = await getCurrentUser();
 
   return db
     .select({
@@ -46,6 +62,7 @@ export async function getProjects(): Promise<Project[]> {
       description: project.description,
     })
     .from(project)
+    .where(eq(project.organizationId, organizationId))
     .orderBy(project.name);
 }
 
@@ -57,7 +74,7 @@ const uuidPattern =
 // the database is asked only once.
 export const getProject = cache(
   async (id: string): Promise<Project | undefined> => {
-    await getCurrentUser();
+    const { organizationId } = await getCurrentUser();
 
     if (!uuidPattern.test(id)) {
       return undefined;
@@ -70,17 +87,33 @@ export const getProject = cache(
         description: project.description,
       })
       .from(project)
-      .where(eq(project.id, id));
+      .where(
+        and(eq(project.id, id), eq(project.organizationId, organizationId)),
+      );
     return row;
   },
 );
 
+// The name of the team the person works in right now.
+export async function getTeamName(): Promise<string> {
+  const { organizationId } = await getCurrentUser();
+
+  const [row] = await db
+    .select({ name: organization.name })
+    .from(organization)
+    .where(eq(organization.id, organizationId));
+  return row.name;
+}
+
+// The people in the team: they're the ones an issue can be assigned to.
 export async function getUsers(): Promise<Person[]> {
-  await getCurrentUser();
+  const { organizationId } = await getCurrentUser();
 
   return db
     .select({ id: user.id, name: user.name })
-    .from(user)
+    .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
+    .where(eq(member.organizationId, organizationId))
     .orderBy(user.name);
 }
 
@@ -88,10 +121,11 @@ export async function getIssues(
   projectId: string,
   { statuses, assigneeId, page = 1 }: IssueFilters = {},
 ): Promise<{ items: Issue[]; total: number; page: number }> {
-  await getCurrentUser();
+  const { organizationId } = await getCurrentUser();
 
   const where = and(
     eq(issue.projectId, projectId),
+    inArray(issue.projectId, projectsOf(organizationId)),
     isNull(issue.archivedAt),
     statuses ? inArray(issue.status, statuses) : undefined,
     assigneeId ? eq(issue.assigneeId, assigneeId) : undefined,
@@ -158,13 +192,7 @@ function ownIssue(issueId: string, organizationId: string) {
   return and(
     eq(issue.id, issueId),
     isNull(issue.archivedAt),
-    inArray(
-      issue.projectId,
-      db
-        .select({ id: project.id })
-        .from(project)
-        .where(eq(project.organizationId, organizationId)),
-    ),
+    inArray(issue.projectId, projectsOf(organizationId)),
   );
 }
 
