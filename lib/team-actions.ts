@@ -6,6 +6,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
+const roleChoices = ["member", "admin", "viewer"] as const;
+
 export type InviteState = {
   message?: string;
   sentTo?: string;
@@ -16,7 +18,9 @@ export async function inviteAction(
   formData: FormData,
 ): Promise<InviteState> {
   const email = String(formData.get("email") ?? "");
-  const role = formData.get("role") === "admin" ? "admin" : "member";
+  // The roles the form offers. Anything else becomes a plain member.
+  const role =
+    roleChoices.find((choice) => choice === formData.get("role")) ?? "member";
 
   try {
     // Better Auth checks that the person asking may invite to their

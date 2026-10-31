@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { IssueListSkeleton } from "@/components/issue-list";
 import { ProjectIssues } from "@/components/project-issues";
 import { buttonVariants } from "@/components/ui/button";
-import { getProject } from "@/lib/data";
+import { getIssuePermissions, getProject } from "@/lib/data";
 import { parseIssueSearch } from "@/lib/issue-filters";
 
 export default async function ProjectPage({
@@ -13,7 +13,10 @@ export default async function ProjectPage({
 }: PageProps<"/projects/[projectId]">) {
   const { projectId } = await params;
   const search = parseIssueSearch(await searchParams);
-  const project = await getProject(projectId);
+  const [project, can] = await Promise.all([
+    getProject(projectId),
+    getIssuePermissions(),
+  ]);
 
   if (!project) {
     notFound();
@@ -26,12 +29,14 @@ export default async function ProjectPage({
           <h1 className="text-2xl font-bold">{project.name}</h1>
           <p className="mt-2 text-muted-foreground">{project.description}</p>
         </div>
-        <Link
-          href={`/projects/${project.id}/issues/new`}
-          className={buttonVariants()}
-        >
-          New issue
-        </Link>
+        {can.create && (
+          <Link
+            href={`/projects/${project.id}/issues/new`}
+            className={buttonVariants()}
+          >
+            New issue
+          </Link>
+        )}
       </div>
       <div className="mt-6">
         <Suspense fallback={<IssueListSkeleton />}>

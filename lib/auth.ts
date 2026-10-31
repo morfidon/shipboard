@@ -5,6 +5,7 @@ import { organization } from "better-auth/plugins";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { ac, roles } from "@/lib/permissions";
 
 // Everything about signing in: where Better Auth keeps users and sessions,
 // and how people prove who they are.
@@ -39,6 +40,9 @@ export const auth = betterAuth({
   },
   plugins: [
     organization({
+      // Our roles, viewer included (lib/permissions.ts).
+      ac,
+      roles,
       sendInvitationEmail: async ({ id, email, organization, inviter }) => {
         // For now, the terminal is our inbox here too.
         console.log(

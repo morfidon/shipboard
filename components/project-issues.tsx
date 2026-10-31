@@ -2,7 +2,13 @@ import Link from "next/link";
 import { IssueFilters } from "@/components/issue-filters";
 import { IssueList } from "@/components/issue-list";
 import { Pagination } from "@/components/pagination";
-import { getIssues, getProject, getUsers, PAGE_SIZE } from "@/lib/data";
+import {
+  getIssuePermissions,
+  getIssues,
+  getProject,
+  getUsers,
+  PAGE_SIZE,
+} from "@/lib/data";
 import {
   issuesHref,
   statusFilters,
@@ -16,9 +22,10 @@ export async function ProjectIssues({
   projectId: string;
   search: IssueSearch;
 }) {
-  const [project, people, { items, total, page }] = await Promise.all([
+  const [project, people, can, { items, total, page }] = await Promise.all([
     getProject(projectId),
     getUsers(),
+    getIssuePermissions(),
     getIssues(projectId, {
       statuses: search.status ? statusFilters[search.status] : undefined,
       assigneeId: search.assignee,
@@ -56,7 +63,7 @@ export async function ProjectIssues({
           <p className="text-sm text-muted-foreground">
             {total} {total === 1 ? "issue" : "issues"}
           </p>
-          <IssueList projectId={projectId} issues={items} />
+          <IssueList projectId={projectId} issues={items} can={can} />
           {/* The page getIssues shows, which can be the last one. */}
           <Pagination
             page={page}

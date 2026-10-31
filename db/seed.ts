@@ -15,7 +15,7 @@ const people = [
   { name: "Tom Novak", email: "tom@example.com", role: "admin" },
   { name: "Lena Fischer", email: "lena@example.com", role: "member" },
   { name: "Sam Ortiz", email: "sam@example.com", role: "member" },
-  { name: "Priya Nair", email: "priya@example.com", role: "member" },
+  { name: "Priya Nair", email: "priya@example.com", role: "viewer" },
 ];
 
 type Status = "todo" | "in_progress" | "done";

@@ -33,6 +33,7 @@ export function InviteForm() {
           >
             <option value="member">Member</option>
             <option value="admin">Admin</option>
+            <option value="viewer">Viewer</option>
           </select>
         </div>
         <div>

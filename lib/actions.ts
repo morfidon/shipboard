@@ -3,7 +3,6 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/current-user";
 import {
   archiveIssue,
   createIssue,
@@ -14,7 +13,8 @@ import {
 import { issueSchema, statusSchema } from "@/lib/schemas";
 
 // Every action here is a public endpoint: anyone can call it with any
-// arguments. So each one checks who is asking before it changes anything.
+// arguments. The data layer checks who is asking and what their role may
+// do before it changes anything.
 
 export type FormState = {
   errors?: { title?: string[]; description?: string[] };
@@ -47,11 +47,7 @@ export async function createIssueAction(
     return { errors: z.flattenError(result.error).fieldErrors, values };
   }
 
-  const user = await getCurrentUser();
-  const created = await createIssue(
-    { projectId, ...result.data },
-    user.organizationId,
-  );
+  const created = await createIssue({ projectId, ...result.data });
   if (!created) {
     return { message: "Project not found.", values };
   }
@@ -70,8 +66,7 @@ export async function updateIssueAction(
     return { errors: z.flattenError(result.error).fieldErrors, values };
   }
 
-  const user = await getCurrentUser();
-  const updated = await updateIssue(issueId, result.data, user.organizationId);
+  const updated = await updateIssue(issueId, result.data);
   if (!updated) {
     return { message: "Issue not found.", values };
   }
@@ -84,13 +79,8 @@ export async function updateIssueStatusAction(
   issueId: string,
   status: IssueStatus,
 ): Promise<{ error?: string }> {
-  const user = await getCurrentUser();
   // Our menu offers only the three statuses. parse() throws for anything else.
-  const changed = await updateIssueStatus(
-    issueId,
-    statusSchema.parse(status),
-    user.organizationId,
-  );
+  const changed = await updateIssueStatus(issueId, statusSchema.parse(status));
   if (!changed) {
     return { error: "Issue not found." };
   }
@@ -103,8 +93,7 @@ export async function updateIssueStatusAction(
 export async function archiveIssueAction(
   issueId: string,
 ): Promise<{ error?: string }> {
-  const user = await getCurrentUser();
-  const archived = await archiveIssue(issueId, user.organizationId);
+  const archived = await archiveIssue(issueId);
   if (!archived) {
     return { error: "Issue not found." };
   }

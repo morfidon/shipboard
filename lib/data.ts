@@ -11,7 +11,8 @@ import {
   project,
   user,
 } from "@/db/schema";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
+import { can, type IssueAction } from "@/lib/permissions";
 
 export type IssueStatus = (typeof issueStatus.enumValues)[number];
 
@@ -94,6 +95,20 @@ export const getProject = cache(
     return row;
   },
 );
+
+// What the person's role lets them do with issues, so the screen shows only
+// buttons that work. Hiding a button protects nothing: the writes check again.
+export async function getIssuePermissions(): Promise<
+  Record<IssueAction, boolean>
+> {
+  const { role } = await getCurrentUser();
+
+  return {
+    create: can(role, "create"),
+    update: can(role, "update"),
+    archive: can(role, "archive"),
+  };
+}
 
 // The name of the team the person works in right now.
 export async function getTeamName(): Promise<string> {
@@ -211,20 +226,32 @@ export async function getIssues(
   return { items, total, page };
 }
 
-// Writes get the organization of the person asking. Anything that belongs
-// to another organization is treated as if it didn't exist.
+// Writes ask who is asking, check that their role may do it, and touch
+// only their team's rows. Anything from another team is treated as if it
+// didn't exist.
 
-export async function createIssue(
-  values: { projectId: string; title: string; description: string },
-  organizationId: string,
-): Promise<{ id: string } | undefined> {
+// A role that may not do this is refused here, whatever the screen shows.
+function allow(user: CurrentUser, action: IssueAction) {
+  if (!can(user.role, action)) {
+    throw new Error(`A ${user.role} can't ${action} issues.`);
+  }
+}
+
+export async function createIssue(values: {
+  projectId: string;
+  title: string;
+  description: string;
+}): Promise<{ id: string } | undefined> {
+  const user = await getCurrentUser();
+  allow(user, "create");
+
   const [owned] = await db
     .select({ id: project.id })
     .from(project)
     .where(
       and(
         eq(project.id, values.projectId),
-        eq(project.organizationId, organizationId),
+        eq(project.organizationId, user.organizationId),
       ),
     );
   if (!owned) {
@@ -251,12 +278,14 @@ function ownIssue(issueId: string, organizationId: string) {
 export async function updateIssueStatus(
   issueId: string,
   status: IssueStatus,
-  organizationId: string,
 ): Promise<boolean> {
+  const user = await getCurrentUser();
+  allow(user, "update");
+
   const changed = await db
     .update(issue)
     .set({ status })
-    .where(ownIssue(issueId, organizationId))
+    .where(ownIssue(issueId, user.organizationId))
     .returning({ id: issue.id });
   return changed.length > 0;
 }
@@ -264,24 +293,26 @@ export async function updateIssueStatus(
 export async function updateIssue(
   issueId: string,
   values: { title: string; description: string },
-  organizationId: string,
 ): Promise<{ projectId: string } | undefined> {
+  const user = await getCurrentUser();
+  allow(user, "update");
+
   const [row] = await db
     .update(issue)
     .set(values)
-    .where(ownIssue(issueId, organizationId))
+    .where(ownIssue(issueId, user.organizationId))
     .returning({ projectId: issue.projectId });
   return row;
 }
 
-export async function archiveIssue(
-  issueId: string,
-  organizationId: string,
-): Promise<boolean> {
+export async function archiveIssue(issueId: string): Promise<boolean> {
+  const user = await getCurrentUser();
+  allow(user, "archive");
+
   const archived = await db
     .update(issue)
     .set({ archivedAt: new Date() })
-    .where(ownIssue(issueId, organizationId))
+    .where(ownIssue(issueId, user.organizationId))
     .returning({ id: issue.id });
   return archived.length > 0;
 }
@@ -297,8 +328,9 @@ export type IssueDetails = {
 // so it gets the same check.
 export async function getIssue(
   issueId: string,
-  organizationId: string,
 ): Promise<IssueDetails | undefined> {
+  const { organizationId } = await getCurrentUser();
+
   if (!uuidPattern.test(issueId)) {
     return undefined;
   }

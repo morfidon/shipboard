@@ -28,6 +28,7 @@ beforeEach(async () => {
     id: "maya",
     name: "Maya Chen",
     organizationId,
+    role: "owner",
   });
 });
 
@@ -281,24 +282,25 @@ describe("getIssues", () => {
 
 describe("getIssue", () => {
   it("finds an issue only for its own organization", async () => {
-    const project = await createProject();
-    const created = await createIssue({ projectId: project.id });
-    const other = await createOrganization();
+    const ours = await ourProject();
+    const theirs = await createProject();
+    const mine = await createIssue({ projectId: ours.id });
+    const notMine = await createIssue({ projectId: theirs.id });
 
-    expect(await getIssue(created.id, project.organizationId)).toMatchObject({
-      id: created.id,
-      projectId: project.id,
+    expect(await getIssue(mine.id)).toMatchObject({
+      id: mine.id,
+      projectId: ours.id,
     });
-    expect(await getIssue(created.id, other.id)).toBeUndefined();
+    expect(await getIssue(notMine.id)).toBeUndefined();
   });
 
   it("hides archived issues", async () => {
-    const project = await createProject();
+    const project = await ourProject();
     const archived = await createIssue({
       projectId: project.id,
       archivedAt: new Date(),
     });
 
-    expect(await getIssue(archived.id, project.organizationId)).toBeUndefined();
+    expect(await getIssue(archived.id)).toBeUndefined();
   });
 });

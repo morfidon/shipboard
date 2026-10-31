@@ -26,12 +26,23 @@ const statusVariants = {
   done: "secondary",
 } as const;
 
+// For someone who may look but not change: the badge alone, no menu.
+export function StatusBadge({ status }: { status: IssueStatus }) {
+  return (
+    <span className={badgeVariants({ variant: statusVariants[status] })}>
+      {statusLabels[status]}
+    </span>
+  );
+}
+
 export function IssueStatusMenu({
   issueId,
   status,
+  canArchive,
 }: {
   issueId: string;
   status: IssueStatus;
+  canArchive: boolean;
 }) {
   // While the action runs, the badge shows the status we asked for.
   // When it ends, the badge shows what the server says again.
@@ -81,8 +92,12 @@ export function IssueStatusMenu({
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={archive}>Archive</DropdownMenuItem>
+          {canArchive && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={archive}>Archive</DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       {error && (

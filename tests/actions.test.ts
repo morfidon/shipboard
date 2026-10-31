@@ -30,6 +30,7 @@ beforeEach(async () => {
     id: "maya",
     name: "Maya Chen",
     organizationId,
+    role: "owner",
   });
 });
 

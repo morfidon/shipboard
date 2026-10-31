@@ -1,17 +1,19 @@
 import { notFound } from "next/navigation";
 import { EditIssueForm } from "@/components/issue-form";
-import { getCurrentUser } from "@/lib/current-user";
-import { getIssue } from "@/lib/data";
+import { getIssue, getIssuePermissions } from "@/lib/data";
 
 export default async function IssuePage({
   params,
 }: PageProps<"/projects/[projectId]/issues/[issueId]">) {
   const { projectId, issueId } = await params;
-  const user = await getCurrentUser();
-  const issue = await getIssue(issueId, user.organizationId);
+  const [issue, can] = await Promise.all([
+    getIssue(issueId),
+    getIssuePermissions(),
+  ]);
 
-  // The issue must also belong to the project in the address.
-  if (!issue || issue.projectId !== projectId) {
+  // The issue must also belong to the project in the address, and this
+  // page is only for people who may change it.
+  if (!issue || issue.projectId !== projectId || !can.update) {
     notFound();
   }
 
