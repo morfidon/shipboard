@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { beforeEach } from "vitest";
 import { db } from "@/db";
 
 // Tests change data, so refuse any database but a test one.
@@ -12,3 +14,9 @@ if (!new URL(process.env.DATABASE_URL!).pathname.endsWith("_test")) {
 // Runs before every test file: give the test database the newest shape,
 // using the same migrations as the real one. Done ones are skipped.
 await migrate(db, { migrationsFolder: "drizzle" });
+
+// Every test starts with an empty database. TRUNCATE empties tables in one go;
+// CASCADE also empties the tables that point to them: projects and issues.
+beforeEach(async () => {
+  await db.execute(sql`truncate table "user", organization cascade`);
+});

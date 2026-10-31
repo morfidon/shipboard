@@ -27,6 +27,8 @@ export default defineConfig({
           name: "integration",
           include: ["tests/**/*.test.ts"],
           setupFiles: ["tests/setup.ts"],
+          // One database, so one test file at a time.
+          fileParallelism: false,
         },
       },
     ],
