@@ -1,5 +1,12 @@
 import { db } from "@/db";
-import { issue, member, organization, project, user } from "@/db/schema";
+import {
+  invitation,
+  issue,
+  member,
+  organization,
+  project,
+  user,
+} from "@/db/schema";
 
 // Small helpers that put one row into the test database. Every column has
 // a sensible default, so a test only writes down the values it cares about.
@@ -40,6 +47,28 @@ export async function createMember(
       ...values,
       organizationId,
       userId,
+    })
+    .returning();
+  return row;
+}
+
+export async function createInvitation(
+  values: Partial<typeof invitation.$inferInsert> = {},
+) {
+  const organizationId =
+    values.organizationId ?? (await createOrganization()).id;
+  const inviterId = values.inviterId ?? (await createUser()).id;
+  const [row] = await db
+    .insert(invitation)
+    .values({
+      id: crypto.randomUUID(),
+      email: "someone@example.com",
+      role: "member",
+      // Better Auth's default: invitations last 48 hours.
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      ...values,
+      organizationId,
+      inviterId,
     })
     .returning();
   return row;

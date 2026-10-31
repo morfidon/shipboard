@@ -1,8 +1,9 @@
 import "server-only";
-import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import {
+  invitation,
   issue,
   issueStatus,
   member,
@@ -103,6 +104,57 @@ export async function getTeamName(): Promise<string> {
     .from(organization)
     .where(eq(organization.id, organizationId));
   return row.name;
+}
+
+export type Member = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+// The team's members with their roles, for the Team page.
+export async function getMembers(): Promise<Member[]> {
+  const { organizationId } = await getCurrentUser();
+
+  return db
+    .select({
+      id: member.id,
+      name: user.name,
+      email: user.email,
+      role: member.role,
+    })
+    .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
+    .where(eq(member.organizationId, organizationId))
+    .orderBy(member.createdAt, user.name);
+}
+
+export type PendingInvitation = {
+  id: string;
+  email: string;
+  role: string | null;
+};
+
+// Invitations nobody has accepted yet, and that haven't expired.
+export async function getPendingInvitations(): Promise<PendingInvitation[]> {
+  const { organizationId } = await getCurrentUser();
+
+  return db
+    .select({
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+    })
+    .from(invitation)
+    .where(
+      and(
+        eq(invitation.organizationId, organizationId),
+        eq(invitation.status, "pending"),
+        gt(invitation.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(invitation.createdAt);
 }
 
 // The people in the team: they're the ones an issue can be assigned to.

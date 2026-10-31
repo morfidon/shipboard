@@ -3,11 +3,13 @@ import { getCurrentUser } from "@/lib/current-user";
 import {
   getIssue,
   getIssues,
+  getPendingInvitations,
   getProject,
   getProjects,
   getUsers,
 } from "@/lib/data";
 import {
+  createInvitation,
   createIssue,
   createMember,
   createOrganization,
@@ -96,6 +98,28 @@ describe("getUsers", () => {
     const people = await getUsers();
 
     expect(people.map((p) => p.name)).toEqual(["Lena Fischer"]);
+  });
+});
+
+describe("getPendingInvitations", () => {
+  it("lists only this team's open invitations", async () => {
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    await createInvitation({ organizationId, email: "open@example.com" });
+    await createInvitation({
+      organizationId,
+      email: "joined@example.com",
+      status: "accepted",
+    });
+    await createInvitation({
+      organizationId,
+      email: "late@example.com",
+      expiresAt: hourAgo,
+    });
+    await createInvitation({ email: "elsewhere@example.com" });
+
+    const invitations = await getPendingInvitations();
+
+    expect(invitations.map((i) => i.email)).toEqual(["open@example.com"]);
   });
 });
 

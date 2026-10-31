@@ -1,4 +1,4 @@
-import { FolderKanban, LayoutDashboard } from "lucide-react";
+import { FolderKanban, LayoutDashboard, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { NavLink } from "@/components/nav-link";
@@ -25,6 +25,10 @@ export default function AppLayout({
             <NavLink href="/projects">
               <FolderKanban className="size-4" />
               Projects
+            </NavLink>
+            <NavLink href="/team">
+              <Users className="size-4" />
+              Team
             </NavLink>
           </Suspense>
         </nav>
