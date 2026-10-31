@@ -21,19 +21,46 @@ export function NewIssueForm({ projectId }: { projectId: string }) {
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
-        <Input id="title" name="title" required />
+        <Input
+          id="title"
+          name="title"
+          required
+          maxLength={120}
+          defaultValue={state.values?.title}
+          aria-invalid={Boolean(state.errors?.title)}
+          aria-describedby={state.errors?.title && "title-error"}
+        />
+        <FieldError id="title-error" errors={state.errors?.title} />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">Description</Label>
-        <Textarea id="description" name="description" rows={4} />
+        <Textarea
+          id="description"
+          name="description"
+          rows={4}
+          maxLength={5000}
+          defaultValue={state.values?.description}
+          aria-invalid={Boolean(state.errors?.description)}
+          aria-describedby={state.errors?.description && "description-error"}
+        />
+        <FieldError id="description-error" errors={state.errors?.description} />
       </div>
-      {state.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      )}
       <SubmitButton />
     </form>
+  );
+}
+
+// The server's message for one field. role="alert" reads it out as soon as
+// it appears; the field's aria-describedby points here too.
+function FieldError({ id, errors }: { id: string; errors?: string[] }) {
+  if (!errors) {
+    return null;
+  }
+
+  return (
+    <p id={id} role="alert" className="text-sm text-destructive">
+      {errors[0]}
+    </p>
   );
 }
 
