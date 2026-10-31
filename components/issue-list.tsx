@@ -1,8 +1,15 @@
+import Link from "next/link";
 import { IssueStatusMenu } from "@/components/issue-status-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Issue } from "@/lib/data";
 
-export function IssueList({ issues }: { issues: Issue[] }) {
+export function IssueList({
+  projectId,
+  issues,
+}: {
+  projectId: string;
+  issues: Issue[];
+}) {
   return (
     <ul className="flex flex-col gap-2">
       {issues.map((issue) => (
@@ -11,7 +18,12 @@ export function IssueList({ issues }: { issues: Issue[] }) {
           className="flex items-center justify-between gap-4 rounded-lg border p-3"
         >
           <div className="flex flex-col">
-            <span>{issue.title}</span>
+            <Link
+              href={`/projects/${projectId}/issues/${issue.id}`}
+              className="hover:underline"
+            >
+              {issue.title}
+            </Link>
             <span className="text-sm text-muted-foreground">
               {issue.assignee ?? "Unassigned"}
             </span>

@@ -77,7 +77,7 @@ export async function getUsers(): Promise<Person[]> {
 export async function getIssues(
   projectId: string,
   { statuses, assigneeId, page = 1 }: IssueFilters = {},
-): Promise<{ items: Issue[]; total: number }> {
+): Promise<{ items: Issue[]; total: number; page: number }> {
   const where = and(
     eq(issue.projectId, projectId),
     isNull(issue.archivedAt),
@@ -103,7 +103,14 @@ export async function getIssues(
     db.select({ total: count() }).from(issue).where(where),
   ]);
 
-  return { items, total };
+  // A page past the end (its last issue was archived, or a link says
+  // ?page=999): ask again, for the last page.
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (page > lastPage) {
+    return getIssues(projectId, { statuses, assigneeId, page: lastPage });
+  }
+
+  return { items, total, page };
 }
 
 // Writes get the organization of the person asking. Anything that belongs
@@ -133,6 +140,22 @@ export async function createIssue(
   return row;
 }
 
+// The condition every issue write uses: this issue, not archived, and only
+// if it's in one of this organization's projects.
+function ownIssue(issueId: string, organizationId: string) {
+  return and(
+    eq(issue.id, issueId),
+    isNull(issue.archivedAt),
+    inArray(
+      issue.projectId,
+      db
+        .select({ id: project.id })
+        .from(project)
+        .where(eq(project.organizationId, organizationId)),
+    ),
+  );
+}
+
 export async function updateIssueStatus(
   issueId: string,
   status: IssueStatus,
@@ -141,19 +164,61 @@ export async function updateIssueStatus(
   const changed = await db
     .update(issue)
     .set({ status })
-    .where(
-      and(
-        eq(issue.id, issueId),
-        // Only an issue in one of this organization's projects.
-        inArray(
-          issue.projectId,
-          db
-            .select({ id: project.id })
-            .from(project)
-            .where(eq(project.organizationId, organizationId)),
-        ),
-      ),
-    )
+    .where(ownIssue(issueId, organizationId))
     .returning({ id: issue.id });
   return changed.length > 0;
+}
+
+export async function updateIssue(
+  issueId: string,
+  values: { title: string; description: string },
+  organizationId: string,
+): Promise<{ projectId: string } | undefined> {
+  const [row] = await db
+    .update(issue)
+    .set(values)
+    .where(ownIssue(issueId, organizationId))
+    .returning({ projectId: issue.projectId });
+  return row;
+}
+
+export async function archiveIssue(
+  issueId: string,
+  organizationId: string,
+): Promise<boolean> {
+  const archived = await db
+    .update(issue)
+    .set({ archivedAt: new Date() })
+    .where(ownIssue(issueId, organizationId))
+    .returning({ id: issue.id });
+  return archived.length > 0;
+}
+
+export type IssueDetails = {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+};
+
+// One issue for the edit page. Reading it is the first step of a write,
+// so it gets the same check.
+export async function getIssue(
+  issueId: string,
+  organizationId: string,
+): Promise<IssueDetails | undefined> {
+  if (!uuidPattern.test(issueId)) {
+    return undefined;
+  }
+
+  const [row] = await db
+    .select({
+      id: issue.id,
+      projectId: issue.projectId,
+      title: issue.title,
+      description: issue.description,
+    })
+    .from(issue)
+    .where(ownIssue(issueId, organizationId));
+  return row;
 }

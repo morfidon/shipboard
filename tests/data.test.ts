@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getIssues, getProject, getProjects } from "@/lib/data";
-import { createIssue, createProject, createUser } from "./factories";
+import { getIssue, getIssues, getProject, getProjects } from "@/lib/data";
+import {
+  createIssue,
+  createOrganization,
+  createProject,
+  createUser,
+} from "./factories";
 
 describe("getProject", () => {
   it("finds each project by its id", async () => {
@@ -152,6 +157,19 @@ describe("getIssues", () => {
     expect(shownIds.sort()).toEqual(createdIds.sort());
   });
 
+  it("shows the last page for a page past the end", async () => {
+    const project = await createProject();
+    for (let n = 1; n <= 12; n++) {
+      await createIssue({ projectId: project.id, title: `Issue ${n}` });
+    }
+
+    // Page 3 is gone: its last issue was archived, or a link says ?page=999.
+    const result = await getIssues(project.id, { page: 3 });
+
+    expect(result.page).toBe(2);
+    expect(result.items).toHaveLength(2);
+  });
+
   it("puts the newest issue first", async () => {
     const project = await createProject();
     await createIssue({
@@ -168,5 +186,29 @@ describe("getIssues", () => {
     const { items } = await getIssues(project.id);
 
     expect(items.map((i) => i.title)).toEqual(["Newer", "Older"]);
+  });
+});
+
+describe("getIssue", () => {
+  it("finds an issue only for its own organization", async () => {
+    const project = await createProject();
+    const created = await createIssue({ projectId: project.id });
+    const other = await createOrganization();
+
+    expect(await getIssue(created.id, project.organizationId)).toMatchObject({
+      id: created.id,
+      projectId: project.id,
+    });
+    expect(await getIssue(created.id, other.id)).toBeUndefined();
+  });
+
+  it("hides archived issues", async () => {
+    const project = await createProject();
+    const archived = await createIssue({
+      projectId: project.id,
+      archivedAt: new Date(),
+    });
+
+    expect(await getIssue(archived.id, project.organizationId)).toBeUndefined();
   });
 });

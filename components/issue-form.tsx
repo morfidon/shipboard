@@ -6,16 +6,50 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createIssueAction, type FormState } from "@/lib/actions";
+import {
+  createIssueAction,
+  updateIssueAction,
+  type FormState,
+} from "@/lib/actions";
+import type { IssueDetails } from "@/lib/data";
 
 const initialState: FormState = {};
 
 export function NewIssueForm({ projectId }: { projectId: string }) {
   // The project's id travels with the action; the fields come from the form.
-  const [state, formAction] = useActionState(
-    createIssueAction.bind(null, projectId),
-    initialState,
+  return (
+    <IssueForm
+      action={createIssueAction.bind(null, projectId)}
+      submitLabel="Create issue"
+      pendingLabel="Creating…"
+    />
   );
+}
+
+export function EditIssueForm({ issue }: { issue: IssueDetails }) {
+  return (
+    <IssueForm
+      action={updateIssueAction.bind(null, issue.id)}
+      defaultValues={issue}
+      submitLabel="Save changes"
+      pendingLabel="Saving…"
+    />
+  );
+}
+
+// One form for both: the action and the labels are what differ.
+function IssueForm({
+  action,
+  defaultValues,
+  submitLabel,
+  pendingLabel,
+}: {
+  action: (previous: FormState, formData: FormData) => Promise<FormState>;
+  defaultValues?: { title: string; description: string };
+  submitLabel: string;
+  pendingLabel: string;
+}) {
+  const [state, formAction] = useActionState(action, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -26,7 +60,7 @@ export function NewIssueForm({ projectId }: { projectId: string }) {
           name="title"
           required
           maxLength={120}
-          defaultValue={state.values?.title}
+          defaultValue={state.values?.title ?? defaultValues?.title}
           aria-invalid={Boolean(state.errors?.title)}
           aria-describedby={state.errors?.title && "title-error"}
         />
@@ -39,7 +73,7 @@ export function NewIssueForm({ projectId }: { projectId: string }) {
           name="description"
           rows={4}
           maxLength={5000}
-          defaultValue={state.values?.description}
+          defaultValue={state.values?.description ?? defaultValues?.description}
           aria-invalid={Boolean(state.errors?.description)}
           aria-describedby={state.errors?.description && "description-error"}
         />
@@ -50,7 +84,7 @@ export function NewIssueForm({ projectId }: { projectId: string }) {
           {state.message}
         </p>
       )}
-      <SubmitButton />
+      <SubmitButton label={submitLabel} pendingLabel={pendingLabel} />
     </form>
   );
 }
@@ -70,12 +104,18 @@ function FieldError({ id, errors }: { id: string; errors?: string[] }) {
 }
 
 // useFormStatus reads the form it sits in, so the button is its own component.
-function SubmitButton() {
+function SubmitButton({
+  label,
+  pendingLabel,
+}: {
+  label: string;
+  pendingLabel: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
     <Button type="submit" disabled={pending} className="self-start">
-      {pending ? "Creating…" : "Create issue"}
+      {pending ? pendingLabel : label}
     </Button>
   );
 }

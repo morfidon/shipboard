@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { issue } from "@/db/schema";
-import { createIssueAction, updateIssueStatusAction } from "@/lib/actions";
+import {
+  archiveIssueAction,
+  createIssueAction,
+  updateIssueAction,
+  updateIssueStatusAction,
+} from "@/lib/actions";
 import { getCurrentUser } from "@/lib/current-user";
 import { createIssue, createOrganization, createProject } from "./factories";
 
@@ -50,6 +55,14 @@ async function statusOf(issueId: string) {
     .from(issue)
     .where(eq(issue.id, issueId));
   return row.status;
+}
+
+async function archivedAt(issueId: string) {
+  const [row] = await db
+    .select({ archivedAt: issue.archivedAt })
+    .from(issue)
+    .where(eq(issue.id, issueId));
+  return row.archivedAt;
 }
 
 describe("createIssueAction", () => {
@@ -118,5 +131,99 @@ describe("updateIssueStatusAction", () => {
     });
     expect(await statusOf(theirs.id)).toBe("todo");
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateIssueAction", () => {
+  it("saves the changes and goes back to the project", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    await updateIssueAction(
+      ours.id,
+      {},
+      form({ title: "Fix the logo on phones", description: "Too blurry." }),
+    );
+
+    expect(await titlesIn(project.id)).toEqual(["Fix the logo on phones"]);
+    expect(redirect).toHaveBeenCalledWith(`/projects/${project.id}`);
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("returns the errors when the title is blank", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    const state = await updateIssueAction(
+      ours.id,
+      {},
+      form({ title: "", description: "" }),
+    );
+
+    expect(state.errors).toEqual({ title: ["Give the issue a title."] });
+    expect(await titlesIn(project.id)).toEqual(["Fix the logo"]);
+  });
+
+  it("refuses an issue of another organization", async () => {
+    const theirs = await createIssue();
+
+    const state = await updateIssueAction(
+      theirs.id,
+      {},
+      form({ title: "Sneaky", description: "" }),
+    );
+
+    expect(state.message).toBe("Issue not found.");
+    expect(await titlesIn(theirs.projectId)).toEqual(["Fix the logo"]);
+  });
+
+  it("refuses an issue that was archived meanwhile", async () => {
+    const project = await createProject({ organizationId });
+    // Say the edit form was still open in another tab.
+    const archived = await createIssue({
+      projectId: project.id,
+      archivedAt: new Date(),
+    });
+
+    const state = await updateIssueAction(
+      archived.id,
+      {},
+      form({ title: "Too late", description: "" }),
+    );
+
+    expect(state.message).toBe("Issue not found.");
+    expect(await titlesIn(project.id)).toEqual(["Fix the logo"]);
+  });
+});
+
+describe("archiveIssueAction", () => {
+  it("archives our own issue", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    expect(await archiveIssueAction(ours.id)).toEqual({});
+    expect(await archivedAt(ours.id)).toBeInstanceOf(Date);
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("refuses an issue of another organization", async () => {
+    const theirs = await createIssue();
+
+    expect(await archiveIssueAction(theirs.id)).toEqual({
+      error: "Issue not found.",
+    });
+    expect(await archivedAt(theirs.id)).toBeNull();
+  });
+
+  it("archives an issue only once", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+    await archiveIssueAction(ours.id);
+    const first = await archivedAt(ours.id);
+
+    expect(await archiveIssueAction(ours.id)).toEqual({
+      error: "Issue not found.",
+    });
+    expect(await archivedAt(ours.id)).toEqual(first);
   });
 });

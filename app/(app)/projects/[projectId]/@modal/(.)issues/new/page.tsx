@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
+import { NewIssueForm } from "@/components/issue-form";
 import { Modal } from "@/components/modal";
-import { NewIssueForm } from "@/components/new-issue-form";
 import { getProject } from "@/lib/data";
 
 // Opened from the project page, /issues/new shows up here, over the list.

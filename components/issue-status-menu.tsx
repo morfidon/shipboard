@@ -5,11 +5,13 @@ import { badgeVariants } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { updateIssueStatusAction } from "@/lib/actions";
+import { archiveIssueAction, updateIssueStatusAction } from "@/lib/actions";
 import type { IssueStatus } from "@/lib/data";
 
 const statusLabels = {
@@ -48,6 +50,16 @@ export function IssueStatusMenu({
     });
   }
 
+  function archive() {
+    setError("");
+    startTransition(async () => {
+      const result = await archiveIssueAction(issueId);
+      if (result.error) {
+        setError(result.error);
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col items-end gap-1">
       <DropdownMenu>
@@ -69,6 +81,8 @@ export function IssueStatusMenu({
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={archive}>Archive</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       {error && (

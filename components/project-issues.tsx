@@ -16,7 +16,7 @@ export async function ProjectIssues({
   projectId: string;
   search: IssueSearch;
 }) {
-  const [project, people, { items, total }] = await Promise.all([
+  const [project, people, { items, total, page }] = await Promise.all([
     getProject(projectId),
     getUsers(),
     getIssues(projectId, {
@@ -56,11 +56,12 @@ export async function ProjectIssues({
           <p className="text-sm text-muted-foreground">
             {total} {total === 1 ? "issue" : "issues"}
           </p>
-          <IssueList issues={items} />
+          <IssueList projectId={projectId} issues={items} />
+          {/* The page getIssues shows, which can be the last one. */}
           <Pagination
-            page={search.page}
+            page={page}
             pageCount={Math.ceil(total / PAGE_SIZE)}
-            hrefFor={(page) => issuesHref(projectId, { ...search, page })}
+            hrefFor={(to) => issuesHref(projectId, { ...search, page: to })}
           />
         </>
       )}
