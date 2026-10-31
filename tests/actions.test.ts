@@ -264,3 +264,62 @@ describe("archiveIssueAction", () => {
     expect(await archivedAt(ours.id)).toEqual(first);
   });
 });
+
+// A viewer may look, never change. Every issue here is in our own
+// organization, so the role is the only reason to say no.
+describe("what a viewer can't do", () => {
+  beforeEach(() => signedInAs("viewer"));
+
+  it("refuses to archive an issue", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    await expect(archiveIssueAction(ours.id)).rejects.toThrow(
+      "A viewer can't archive issues.",
+    );
+    expect(await archivedAt(ours.id)).toBeNull();
+  });
+
+  it("refuses to create an issue", async () => {
+    const project = await createProject({ organizationId });
+
+    await expect(
+      createIssueAction(
+        project.id,
+        {},
+        form({ title: "Fix the logo", description: "" }),
+      ),
+    ).rejects.toThrow("A viewer can't create issues.");
+    expect(await titlesIn(project.id)).toEqual([]);
+  });
+
+  it("refuses to edit an issue", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({
+      projectId: project.id,
+      title: "Fix the logo",
+    });
+
+    await expect(
+      updateIssueAction(
+        ours.id,
+        {},
+        form({ title: "Something else", description: "" }),
+      ),
+    ).rejects.toThrow("A viewer can't update issues.");
+    expect(await titlesIn(project.id)).toEqual(["Fix the logo"]);
+  });
+});
+
+describe("what a member can't do", () => {
+  it("refuses to archive an issue", async () => {
+    signedInAs("member");
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    await expect(archiveIssueAction(ours.id)).rejects.toThrow(
+      "A member can't archive issues.",
+    );
+    expect(await archivedAt(ours.id)).toBeNull();
+  });
+});
