@@ -15,5 +15,23 @@ services:
       timeout: 5s
       retries: 30
 
+  # A second database only for tests. Tests delete data, so they never touch the one above.
+  db-test:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: shipboard
+      POSTGRES_PASSWORD: shipboard
+      POSTGRES_DB: shipboard_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    # Kept in memory: fast, and empty again after every restart.
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shipboard -d shipboard_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
 volumes:
   pgdata:
