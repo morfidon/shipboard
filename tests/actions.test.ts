@@ -1,0 +1,122 @@
+import { eq } from "drizzle-orm";
+import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { db } from "@/db";
+import { issue } from "@/db/schema";
+import { createIssueAction, updateIssueStatusAction } from "@/lib/actions";
+import { getCurrentUser } from "@/lib/current-user";
+import { createIssue, createOrganization, createProject } from "./factories";
+
+// refresh() and redirect() only work inside a request that Next.js handles.
+// Here we call the actions as plain functions, so we swap both for mocks:
+// functions that do nothing and remember how they were called.
+vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+// Who is asking? Each test decides.
+vi.mock("@/lib/current-user", () => ({ getCurrentUser: vi.fn() }));
+
+let organizationId: string;
+
+beforeEach(async () => {
+  vi.clearAllMocks();
+  organizationId = (await createOrganization()).id;
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: "maya",
+    name: "Maya Chen",
+    organizationId,
+  });
+});
+
+function form(fields: Record<string, string>) {
+  const formData = new FormData();
+  for (const [name, value] of Object.entries(fields)) {
+    formData.set(name, value);
+  }
+  return formData;
+}
+
+async function titlesIn(projectId: string) {
+  const rows = await db
+    .select({ title: issue.title })
+    .from(issue)
+    .where(eq(issue.projectId, projectId));
+  return rows.map((row) => row.title);
+}
+
+async function statusOf(issueId: string) {
+  const [row] = await db
+    .select({ status: issue.status })
+    .from(issue)
+    .where(eq(issue.id, issueId));
+  return row.status;
+}
+
+describe("createIssueAction", () => {
+  it("creates the issue and goes back to the project", async () => {
+    const project = await createProject({ organizationId });
+
+    await createIssueAction(
+      project.id,
+      {},
+      form({ title: "Fix the logo", description: "Blurry on phones." }),
+    );
+
+    expect(await titlesIn(project.id)).toEqual(["Fix the logo"]);
+    expect(redirect).toHaveBeenCalledWith(`/projects/${project.id}`);
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("returns the errors and the typed text when the title is blank", async () => {
+    const project = await createProject({ organizationId });
+
+    const state = await createIssueAction(
+      project.id,
+      {},
+      form({ title: "   ", description: "Steps to reproduce" }),
+    );
+
+    expect(state).toEqual({
+      errors: { title: ["Give the issue a title."] },
+      values: { title: "   ", description: "Steps to reproduce" },
+    });
+    expect(await titlesIn(project.id)).toEqual([]);
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses a project of another organization", async () => {
+    // Without an organizationId, the factory makes a new organization.
+    const theirs = await createProject();
+
+    const state = await createIssueAction(
+      theirs.id,
+      {},
+      form({ title: "Sneaky", description: "" }),
+    );
+
+    expect(state.message).toBe("Project not found.");
+    expect(await titlesIn(theirs.id)).toEqual([]);
+  });
+});
+
+describe("updateIssueStatusAction", () => {
+  it("changes the status of our own issue", async () => {
+    const project = await createProject({ organizationId });
+    const ours = await createIssue({ projectId: project.id });
+
+    expect(await updateIssueStatusAction(ours.id, "done")).toEqual({});
+    expect(await statusOf(ours.id)).toBe("done");
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("refuses an issue of another organization", async () => {
+    // A new project in a new organization.
+    const theirs = await createIssue();
+
+    expect(await updateIssueStatusAction(theirs.id, "done")).toEqual({
+      error: "Issue not found.",
+    });
+    expect(await statusOf(theirs.id)).toBe("todo");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
