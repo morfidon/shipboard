@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { NavLink } from "@/components/nav-link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserMenu } from "@/components/user-menu";
 
 export default function AppLayout({
   children,
@@ -11,11 +12,11 @@ export default function AppLayout({
 }) {
   return (
     <div className="flex flex-1">
-      <aside className="w-56 border-r bg-muted/40 p-4">
+      <aside className="flex w-56 flex-col border-r bg-muted/40 p-4">
         <Link href="/" className="mb-6 block px-3 text-lg font-bold">
           Shipboard
         </Link>
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-1 flex-col gap-1">
           <Suspense fallback={<Skeleton className="h-20" />}>
             <NavLink href="/dashboard">
               <LayoutDashboard className="size-4" />
@@ -27,6 +28,9 @@ export default function AppLayout({
             </NavLink>
           </Suspense>
         </nav>
+        <Suspense fallback={<Skeleton className="h-10" />}>
+          <UserMenu />
+        </Suspense>
       </aside>
       <main className="flex-1 p-8">{children}</main>
     </div>
