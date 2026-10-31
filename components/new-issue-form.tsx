@@ -45,6 +45,11 @@ export function NewIssueForm({ projectId }: { projectId: string }) {
         />
         <FieldError id="description-error" errors={state.errors?.description} />
       </div>
+      {state.message && (
+        <p role="alert" className="text-sm text-destructive">
+          {state.message}
+        </p>
+      )}
       <SubmitButton />
     </form>
   );

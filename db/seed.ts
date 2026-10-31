@@ -121,15 +121,42 @@ await db.transaction(async (tx) => {
     );
     age += p.issues.length;
   }
+
+  // A second customer, to check that one organization can't change
+  // another one's issues. Our five people work at Acme.
+  const [globex] = await tx
+    .insert(organization)
+    .values({ id: crypto.randomUUID(), name: "Globex", slug: "globex" })
+    .returning({ id: organization.id });
+
+  const [portal] = await tx
+    .insert(project)
+    .values({
+      organizationId: globex.id,
+      name: "Customer portal",
+      description: "Self-service billing for Globex customers.",
+    })
+    .returning({ id: project.id });
+
+  await tx
+    .insert(issue)
+    .values(
+      [
+        "Add invoice downloads",
+        "Send password reset emails",
+        "Show the current plan",
+      ].map((title) => ({ projectId: portal.id, title })),
+    );
 });
 
 const counts = await Promise.all([
   db.$count(user),
+  db.$count(organization),
   db.$count(project),
   db.$count(issue),
 ]);
 console.log(
-  `Seeded ${counts[0]} users, ${counts[1]} projects and ${counts[2]} issues.`,
+  `Seeded ${counts[0]} users, ${counts[1]} organizations, ${counts[2]} projects and ${counts[3]} issues.`,
 );
 
 await db.$client.end();

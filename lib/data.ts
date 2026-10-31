@@ -106,11 +106,26 @@ export async function getIssues(
   return { items, total };
 }
 
-export async function createIssue(values: {
-  projectId: string;
-  title: string;
-  description: string;
-}): Promise<{ id: string }> {
+// Writes get the organization of the person asking. Anything that belongs
+// to another organization is treated as if it didn't exist.
+
+export async function createIssue(
+  values: { projectId: string; title: string; description: string },
+  organizationId: string,
+): Promise<{ id: string } | undefined> {
+  const [owned] = await db
+    .select({ id: project.id })
+    .from(project)
+    .where(
+      and(
+        eq(project.id, values.projectId),
+        eq(project.organizationId, organizationId),
+      ),
+    );
+  if (!owned) {
+    return undefined;
+  }
+
   const [row] = await db
     .insert(issue)
     .values(values)
@@ -118,6 +133,27 @@ export async function createIssue(values: {
   return row;
 }
 
-export async function updateIssueStatus(issueId: string, status: IssueStatus) {
-  await db.update(issue).set({ status }).where(eq(issue.id, issueId));
+export async function updateIssueStatus(
+  issueId: string,
+  status: IssueStatus,
+  organizationId: string,
+): Promise<boolean> {
+  const changed = await db
+    .update(issue)
+    .set({ status })
+    .where(
+      and(
+        eq(issue.id, issueId),
+        // Only an issue in one of this organization's projects.
+        inArray(
+          issue.projectId,
+          db
+            .select({ id: project.id })
+            .from(project)
+            .where(eq(project.organizationId, organizationId)),
+        ),
+      ),
+    )
+    .returning({ id: issue.id });
+  return changed.length > 0;
 }
