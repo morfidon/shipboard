@@ -1,8 +1,13 @@
+import { hashPassword } from "better-auth/crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema.ts";
 
-const { user, organization, project, issue } = schema;
+const { user, account, organization, project, issue } = schema;
 const db = drizzle(process.env.DATABASE_URL!, { schema });
+
+// Everyone in the seed signs in with this made-up password. Only for the
+// database on your own computer.
+const DEMO_PASSWORD = "shipboard-demo";
 
 const people = [
   { name: "Maya Chen", email: "maya@example.com" },
@@ -88,8 +93,28 @@ await db.transaction(async (tx) => {
 
   const users = await tx
     .insert(user)
-    .values(people.map((person) => ({ id: crypto.randomUUID(), ...person })))
+    .values(
+      people.map((person) => ({
+        id: crypto.randomUUID(),
+        ...person,
+        emailVerified: true,
+      })),
+    )
     .returning({ id: user.id });
+
+  // Better Auth keeps passwords in the account table, hashed, the same
+  // way sign-up stores them.
+  await tx.insert(account).values(
+    await Promise.all(
+      users.map(async ({ id }) => ({
+        id: crypto.randomUUID(),
+        userId: id,
+        providerId: "credential",
+        accountId: id,
+        password: await hashPassword(DEMO_PASSWORD),
+      })),
+    ),
+  );
 
   const [acme] = await tx
     .insert(organization)

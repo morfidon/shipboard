@@ -1,8 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -100,22 +99,5 @@ function FieldError({ id, errors }: { id: string; errors?: string[] }) {
     <p id={id} role="alert" className="text-sm text-destructive">
       {errors[0]}
     </p>
-  );
-}
-
-// useFormStatus reads the form it sits in, so the button is its own component.
-function SubmitButton({
-  label,
-  pendingLabel,
-}: {
-  label: string;
-  pendingLabel: string;
-}) {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" disabled={pending} className="self-start">
-      {pending ? pendingLabel : label}
-    </Button>
   );
 }
