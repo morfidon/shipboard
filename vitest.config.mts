@@ -14,6 +14,10 @@ export default defineConfig({
     },
   },
   test: {
+    coverage: {
+      // Measure only lib/, where our logic lives.
+      include: ["lib/**/*.ts"],
+    },
     projects: [
       {
         test: {

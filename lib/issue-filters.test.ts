@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseIssueSearch } from "@/lib/issue-filters";
+import { issuesHref, parseIssueSearch } from "@/lib/issue-filters";
 
 describe("parseIssueSearch", () => {
   it("reads the status, the assignee and the page", () => {
@@ -30,5 +30,17 @@ describe("parseIssueSearch", () => {
     expect(parseIssueSearch({ page: "0" }).page).toBe(1);
     expect(parseIssueSearch({ page: "-3" }).page).toBe(1);
     expect(parseIssueSearch({ page: "banana" }).page).toBe(1);
+  });
+});
+
+describe("issuesHref", () => {
+  it("keeps the filters in the link", () => {
+    expect(issuesHref("p1", { status: "open", page: 2 })).toBe(
+      "/projects/p1?status=open&page=2",
+    );
+  });
+
+  it("leaves page 1 out of the link", () => {
+    expect(issuesHref("p1", { page: 1 })).toBe("/projects/p1");
   });
 });
