@@ -9,7 +9,7 @@ export default function Home() {
         Plan the work, track every issue and ship with confidence.
       </p>
       <div className="flex gap-3">
-        <Link href="/sign-in" className={buttonVariants({ size: "lg" })}>
+        <Link href="/sign-up" className={buttonVariants({ size: "lg" })}>
           Get started
         </Link>
         <Link

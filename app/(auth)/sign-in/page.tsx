@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { SignInForm } from "@/components/sign-in-form";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -17,6 +19,12 @@ export default function SignInPage() {
       <CardContent>
         <SignInForm />
       </CardContent>
+      <CardFooter className="text-sm text-muted-foreground">
+        No account yet?&nbsp;
+        <Link href="/sign-up" className="underline">
+          Sign up
+        </Link>
+      </CardFooter>
     </Card>
   );
 }
