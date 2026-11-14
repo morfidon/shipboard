@@ -1,5 +1,15 @@
 import "server-only";
-import { and, count, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import {
@@ -65,6 +75,42 @@ export async function getProjects(): Promise<Project[]> {
     })
     .from(project)
     .where(eq(project.organizationId, organizationId))
+    .orderBy(project.name);
+}
+
+export type ProjectStats = {
+  id: string;
+  name: string;
+  todo: number;
+  inProgress: number;
+  done: number;
+};
+
+// Counts the rows that match, inside one group.
+function countWhere(condition: SQL) {
+  return sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
+}
+
+// Every project of the team, with its issues counted by status.
+// Archived issues don't count. A project with no issues shows zeros.
+export async function getProjectStats(): Promise<ProjectStats[]> {
+  const { organizationId } = await getCurrentUser();
+
+  return db
+    .select({
+      id: project.id,
+      name: project.name,
+      todo: countWhere(eq(issue.status, "todo")),
+      inProgress: countWhere(eq(issue.status, "in_progress")),
+      done: countWhere(eq(issue.status, "done")),
+    })
+    .from(project)
+    .leftJoin(
+      issue,
+      and(eq(issue.projectId, project.id), isNull(issue.archivedAt)),
+    )
+    .where(eq(project.organizationId, organizationId))
+    .groupBy(project.id)
     .orderBy(project.name);
 }
 

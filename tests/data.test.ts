@@ -6,6 +6,7 @@ import {
   getPendingInvitations,
   getProject,
   getProjects,
+  getProjectStats,
   getUsers,
 } from "@/lib/data";
 import {
@@ -86,6 +87,43 @@ describe("getProjects", () => {
     const projects = await getProjects();
 
     expect(projects.map((p) => p.name)).toEqual(["Website relaunch"]);
+  });
+});
+
+describe("getProjectStats", () => {
+  it("counts each project's issues by status, without archived ones", async () => {
+    const website = await ourProject({ name: "Website relaunch" });
+    const mobile = await ourProject({ name: "Mobile app" });
+    await createIssue({ projectId: website.id, status: "todo" });
+    await createIssue({ projectId: website.id, status: "todo" });
+    await createIssue({ projectId: website.id, status: "in_progress" });
+    await createIssue({ projectId: website.id, status: "done" });
+    await createIssue({
+      projectId: website.id,
+      status: "todo",
+      archivedAt: new Date(),
+    });
+
+    expect(await getProjectStats()).toEqual([
+      { id: mobile.id, name: "Mobile app", todo: 0, inProgress: 0, done: 0 },
+      {
+        id: website.id,
+        name: "Website relaunch",
+        todo: 2,
+        inProgress: 1,
+        done: 1,
+      },
+    ]);
+  });
+
+  it("never counts another team's projects", async () => {
+    await ourProject({ name: "Website relaunch" });
+    const theirs = await createProject({ name: "Customer portal" });
+    await createIssue({ projectId: theirs.id });
+
+    const stats = await getProjectStats();
+
+    expect(stats.map((s) => s.name)).toEqual(["Website relaunch"]);
   });
 });
 
