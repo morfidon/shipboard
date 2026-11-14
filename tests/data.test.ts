@@ -21,8 +21,8 @@ import {
 // Every read asks who is signed in. Tests make no request, so a mock answers.
 vi.mock("@/lib/current-user", () => ({ getCurrentUser: vi.fn() }));
 // Tests run our code without Next.js: "use cache" is only a string here,
-// and cacheLife() would throw. So it becomes a function that does nothing.
-vi.mock("next/cache", () => ({ cacheLife: vi.fn() }));
+// and cacheLife() and cacheTag() would throw. So they do nothing here.
+vi.mock("next/cache", () => ({ cacheLife: vi.fn(), cacheTag: vi.fn() }));
 
 let organizationId: string;
 

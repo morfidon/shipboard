@@ -10,7 +10,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
 import {
@@ -109,7 +109,7 @@ async function projectStatsFor(
   // while a new one is made in the background.
   cacheLife("hours");
 
-  return db
+  const rows = await db
     .select({
       id: project.id,
       name: project.name,
@@ -125,6 +125,17 @@ async function projectStatsFor(
     .where(eq(project.organizationId, organizationId))
     .groupBy(project.id)
     .orderBy(project.name);
+
+  // One label for every project in this copy, so a change in any of them
+  // throws the copy away. One cacheTag call takes at most 128 labels, and a
+  // team can have more projects, so each label gets its own call.
+  rows.forEach((row) => cacheTag(projectTag(row.id)));
+  return rows;
+}
+
+// The label on every saved copy that holds a project's numbers.
+export function projectTag(projectId: string) {
+  return `project-${projectId}`;
 }
 
 // Project ids are UUIDs. Anything else can't be a project, so we don't ask the database.
@@ -300,7 +311,7 @@ export async function createIssue(values: {
   projectId: string;
   title: string;
   description: string;
-}): Promise<{ id: string } | undefined> {
+}): Promise<{ id: string; projectId: string } | undefined> {
   const user = await getCurrentUser();
   allow(user, "create");
 
@@ -317,10 +328,12 @@ export async function createIssue(values: {
     return undefined;
   }
 
+  // The project's id comes back the way the database stores it. Postgres
+  // also accepts other spellings, like capital letters; a label doesn't.
   const [row] = await db
     .insert(issue)
     .values(values)
-    .returning({ id: issue.id });
+    .returning({ id: issue.id, projectId: issue.projectId });
   return row;
 }
 
@@ -337,16 +350,16 @@ function ownIssue(issueId: string, organizationId: string) {
 export async function updateIssueStatus(
   issueId: string,
   status: IssueStatus,
-): Promise<boolean> {
+): Promise<{ projectId: string } | undefined> {
   const user = await getCurrentUser();
   allow(user, "update");
 
-  const changed = await db
+  const [row] = await db
     .update(issue)
     .set({ status })
     .where(ownIssue(issueId, user.organizationId))
-    .returning({ id: issue.id });
-  return changed.length > 0;
+    .returning({ projectId: issue.projectId });
+  return row;
 }
 
 export async function updateIssue(
@@ -364,16 +377,18 @@ export async function updateIssue(
   return row;
 }
 
-export async function archiveIssue(issueId: string): Promise<boolean> {
+export async function archiveIssue(
+  issueId: string,
+): Promise<{ projectId: string } | undefined> {
   const user = await getCurrentUser();
   allow(user, "archive");
 
-  const archived = await db
+  const [row] = await db
     .update(issue)
     .set({ archivedAt: new Date() })
     .where(ownIssue(issueId, user.organizationId))
-    .returning({ id: issue.id });
-  return archived.length > 0;
+    .returning({ projectId: issue.projectId });
+  return row;
 }
 
 export type IssueDetails = {

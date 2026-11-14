@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { refresh } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
@@ -13,10 +13,10 @@ import {
 import { getCurrentUser } from "@/lib/current-user";
 import { createIssue, createOrganization, createProject } from "./factories";
 
-// refresh() and redirect() only work inside a request that Next.js handles.
+// updateTag() and redirect() only work inside a request that Next.js handles.
 // Here we call the actions as plain functions, so we swap both for mocks:
 // functions that do nothing and remember how they were called.
-vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+vi.mock("next/cache", () => ({ updateTag: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 // Who is asking? Each test decides.
 vi.mock("@/lib/current-user", () => ({ getCurrentUser: vi.fn() }));
@@ -70,15 +70,17 @@ describe("createIssueAction", () => {
   it("creates the issue and goes back to the project", async () => {
     const project = await createProject({ organizationId });
 
+    // The id in capital letters: Postgres still finds the project, and the
+    // label and the address must use the id as the database stores it.
     await createIssueAction(
-      project.id,
+      project.id.toUpperCase(),
       {},
       form({ title: "Fix the logo", description: "Blurry on phones." }),
     );
 
     expect(await titlesIn(project.id)).toEqual(["Fix the logo"]);
     expect(redirect).toHaveBeenCalledWith(`/projects/${project.id}`);
-    expect(refresh).toHaveBeenCalledOnce();
+    expect(updateTag).toHaveBeenCalledWith(`project-${project.id}`);
   });
 
   it("returns the errors and the typed text when the title is blank", async () => {
@@ -120,7 +122,7 @@ describe("updateIssueStatusAction", () => {
 
     expect(await updateIssueStatusAction(ours.id, "done")).toEqual({});
     expect(await statusOf(ours.id)).toBe("done");
-    expect(refresh).toHaveBeenCalled();
+    expect(updateTag).toHaveBeenCalledWith(`project-${project.id}`);
   });
 
   it("refuses an issue of another organization", async () => {
@@ -131,7 +133,7 @@ describe("updateIssueStatusAction", () => {
       error: "Issue not found.",
     });
     expect(await statusOf(theirs.id)).toBe("todo");
-    expect(refresh).not.toHaveBeenCalled();
+    expect(updateTag).not.toHaveBeenCalled();
   });
 });
 
@@ -167,7 +169,7 @@ describe("updateIssueStatusAction, role by role", () => {
       "A viewer can't update issues.",
     );
     expect(await statusOf(ours.id)).toBe("todo");
-    expect(refresh).not.toHaveBeenCalled();
+    expect(updateTag).not.toHaveBeenCalled();
   });
 });
 
@@ -184,7 +186,7 @@ describe("updateIssueAction", () => {
 
     expect(await titlesIn(project.id)).toEqual(["Fix the logo on phones"]);
     expect(redirect).toHaveBeenCalledWith(`/projects/${project.id}`);
-    expect(refresh).toHaveBeenCalledOnce();
+    expect(updateTag).toHaveBeenCalledWith(`project-${project.id}`);
   });
 
   it("returns the errors when the title is blank", async () => {
@@ -240,7 +242,7 @@ describe("archiveIssueAction", () => {
 
     expect(await archiveIssueAction(ours.id)).toEqual({});
     expect(await archivedAt(ours.id)).toBeInstanceOf(Date);
-    expect(refresh).toHaveBeenCalled();
+    expect(updateTag).toHaveBeenCalledWith(`project-${project.id}`);
   });
 
   it("refuses an issue of another organization", async () => {

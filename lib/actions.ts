@@ -1,11 +1,12 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
   archiveIssue,
   createIssue,
+  projectTag,
   updateIssue,
   updateIssueStatus,
   type IssueStatus,
@@ -52,8 +53,9 @@ export async function createIssueAction(
     return { message: "Project not found.", values };
   }
 
-  refresh();
-  redirect(`/projects/${projectId}`);
+  // The id as the database stores it, so the label matches the saved copies.
+  updateTag(projectTag(created.projectId));
+  redirect(`/projects/${created.projectId}`);
 }
 
 export async function updateIssueAction(
@@ -71,7 +73,7 @@ export async function updateIssueAction(
     return { message: "Issue not found.", values };
   }
 
-  refresh();
+  updateTag(projectTag(updated.projectId));
   redirect(`/projects/${updated.projectId}`);
 }
 
@@ -85,8 +87,9 @@ export async function updateIssueStatusAction(
     return { error: "Issue not found." };
   }
 
-  // The data changed, so render the current page again with fresh data.
-  refresh();
+  // Throw away every saved copy with this project's label. updateTag also
+  // renders the current page again, in the same answer.
+  updateTag(projectTag(changed.projectId));
   return {};
 }
 
@@ -98,6 +101,6 @@ export async function archiveIssueAction(
     return { error: "Issue not found." };
   }
 
-  refresh();
+  updateTag(projectTag(archived.projectId));
   return {};
 }
