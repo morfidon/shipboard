@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { StarButton } from "@/components/star-button";
 import {
   Card,
@@ -7,14 +8,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProjects } from "@/lib/data";
 
-export default async function ProjectsPage() {
-  const projects = await getProjects();
-
+// Not async: the heading needs no data, so it goes into the static shell.
+// Only the list waits for the database, behind its own placeholder.
+export default function ProjectsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold">Projects</h1>
+      <Suspense fallback={<ProjectListSkeleton />}>
+        <ProjectList />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ProjectList() {
+  const projects = await getProjects();
+
+  return (
+    <>
       {projects.length === 0 && (
         <p className="mt-2 text-muted-foreground">No projects yet.</p>
       )}
@@ -40,6 +54,16 @@ export default async function ProjectsPage() {
           </li>
         ))}
       </ul>
+    </>
+  );
+}
+
+function ProjectListSkeleton() {
+  return (
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Skeleton className="h-24" />
+      <Skeleton className="h-24" />
+      <Skeleton className="h-24" />
     </div>
   );
 }
