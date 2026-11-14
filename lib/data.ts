@@ -10,6 +10,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { cacheLife } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
 import {
@@ -94,7 +95,19 @@ function countWhere(condition: SQL) {
 // Every project of the team, with its issues counted by status.
 // Archived issues don't count. A project with no issues shows zeros.
 export async function getProjectStats(): Promise<ProjectStats[]> {
+  // The session is different in every request, so we read it outside the
+  // cache, and pass in only the team's id. Each team gets its own copy.
   const { organizationId } = await getCurrentUser();
+  return projectStatsFor(organizationId);
+}
+
+async function projectStatsFor(
+  organizationId: string,
+): Promise<ProjectStats[]> {
+  "use cache";
+  // Fresh for an hour. After that, the next visit still gets this copy
+  // while a new one is made in the background.
+  cacheLife("hours");
 
   return db
     .select({
