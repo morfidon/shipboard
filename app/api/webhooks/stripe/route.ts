@@ -1,11 +1,22 @@
-// Stripe's doorbell: Stripe sends a POST here when something happens in our
-// account, like a new subscription. For now, the route only says who rang.
-// It doesn't check who sent the request yet, so it changes nothing.
-export async function POST(request: Request) {
-  const event = await request.json();
-  console.log(`Stripe rang: ${event.type} (${event.id})`);
+import { applyStripeEvent } from "@/lib/billing";
+import { stripe, webhookSecret } from "@/lib/stripe";
 
-  // Any 2xx answer tells Stripe the event arrived. Anything else, and
-  // Stripe tries again later.
+// Stripe's doorbell. Stripe signs every event with our endpoint's secret,
+// so we can check that Stripe sent it, and that nobody changed it.
+export async function POST(request: Request) {
+  // The raw body, exactly as it arrived: the signature covers every byte.
+  const body = await request.text();
+  const signature = request.headers.get("stripe-signature") ?? "";
+
+  let event;
+  try {
+    event = stripe().webhooks.constructEvent(body, signature, webhookSecret());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`Rejected a webhook: ${message}`);
+    return new Response("Invalid signature", { status: 400 });
+  }
+
+  await applyStripeEvent(event);
   return Response.json({ received: true });
 }

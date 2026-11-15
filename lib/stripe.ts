@@ -19,6 +19,18 @@ export function stripe() {
   return client;
 }
 
+// The secret Stripe signs our webhook events with. stripe listen prints one
+// for local work; a deployed endpoint has its own.
+export function webhookSecret() {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error(
+      "STRIPE_WEBHOOK_SECRET is missing. Put your endpoint's secret in .env.local.",
+    );
+  }
+  return secret;
+}
+
 // The Pro price, found by its lookup key, so no price id lives in our code.
 export async function proPriceId() {
   const prices = await stripe().prices.list({
