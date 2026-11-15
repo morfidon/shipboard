@@ -14,6 +14,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
 import {
+  attachment,
   invitation,
   issue,
   issueStatus,
@@ -25,6 +26,7 @@ import {
 import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
 import { can, canManageBilling, type IssueAction } from "@/lib/permissions";
 import type { Plan } from "@/lib/plans";
+import { deleteFile, downloadUrl, storedFile, uploadUrl } from "@/lib/storage";
 
 export type IssueStatus = (typeof issueStatus.enumValues)[number];
 
@@ -472,4 +474,160 @@ export async function getIssue(
     .from(issue)
     .where(ownIssue(issueId, organizationId));
   return row;
+}
+
+// Attachments: only Pro teams, only people who may change the issue, only
+// their team's issues. The file itself goes straight from the browser to
+// storage; the server signs the way in and checks what arrived.
+
+export type AttachmentView = {
+  id: string;
+  fileName: string;
+  size: number;
+};
+
+// The files on one issue, each with a download link for five minutes.
+export async function getAttachments(
+  issueId: string,
+): Promise<AttachmentView[]> {
+  const { organizationId } = await getCurrentUser();
+
+  if (!uuidPattern.test(issueId)) {
+    return [];
+  }
+
+  const rows = await db
+    .select({
+      id: attachment.id,
+      fileName: attachment.fileName,
+      size: attachment.size,
+    })
+    .from(attachment)
+    .innerJoin(issue, eq(attachment.issueId, issue.id))
+    .where(
+      and(
+        eq(attachment.issueId, issueId),
+        inArray(issue.projectId, projectsOf(organizationId)),
+      ),
+    )
+    .orderBy(attachment.createdAt);
+  return rows;
+}
+
+// A fresh download link for one of this team's attachments, or null. It's
+// made when someone clicks, so it never comes from an old page.
+export async function attachmentDownloadUrl(attachmentId: string) {
+  const { organizationId } = await getCurrentUser();
+
+  if (!uuidPattern.test(attachmentId)) {
+    return null;
+  }
+  const [row] = await db
+    .select({ key: attachment.storageKey, fileName: attachment.fileName })
+    .from(attachment)
+    .innerJoin(issue, eq(attachment.issueId, issue.id))
+    .where(
+      and(
+        eq(attachment.id, attachmentId),
+        inArray(issue.projectId, projectsOf(organizationId)),
+      ),
+    );
+  return row ? downloadUrl(row.key, row.fileName) : null;
+}
+
+type UploadCheck = { error: string } | { ok: true };
+
+// Pro, may change issues, and the issue is theirs.
+async function mayAttach(
+  user: CurrentUser,
+  issueId: string,
+): Promise<UploadCheck> {
+  allow(user, "update");
+
+  const [team] = await db
+    .select({ plan: organization.plan })
+    .from(organization)
+    .where(eq(organization.id, user.organizationId));
+  if (team?.plan !== "pro") {
+    return { error: "Attachments are a Pro feature." };
+  }
+
+  if (!uuidPattern.test(issueId)) {
+    return { error: "Issue not found." };
+  }
+  const [found] = await db
+    .select({ id: issue.id })
+    .from(issue)
+    .where(ownIssue(issueId, user.organizationId));
+  return found ? { ok: true } : { error: "Issue not found." };
+}
+
+// Step 1: check everything, then sign a delivery note for this one file.
+// Nothing is saved yet.
+export async function prepareUpload(
+  issueId: string,
+  file: { size: number; contentType: string },
+): Promise<{ error: string } | { key: string; url: string }> {
+  const user = await getCurrentUser();
+  const check = await mayAttach(user, issueId);
+  if ("error" in check) {
+    return check;
+  }
+
+  // A key of our own: the team, the issue, and a random part. The file's
+  // name stays in our database.
+  const key = `${user.organizationId}/${issueId}/${crypto.randomUUID()}`;
+  return { key, url: await uploadUrl(key, file.contentType, file.size) };
+}
+
+// Step 2: the browser says the file arrived. We ask storage ourselves, and
+// save the attachment only if the stored size and type are the ones signed.
+export async function saveAttachment(
+  issueId: string,
+  key: string,
+  file: { fileName: string; contentType: string; size: number },
+): Promise<{ error: string } | { id: string }> {
+  const user = await getCurrentUser();
+  const check = await mayAttach(user, issueId);
+  if ("error" in check) {
+    return check;
+  }
+  // Only a key we could have signed for this issue.
+  if (!key.startsWith(`${user.organizationId}/${issueId}/`)) {
+    return { error: "Issue not found." };
+  }
+
+  // Saved before? A repeated request gets the same attachment back, and an
+  // attached file is never deleted.
+  const [saved] = await db
+    .select({ id: attachment.id })
+    .from(attachment)
+    .where(eq(attachment.storageKey, key));
+  if (saved) {
+    return saved;
+  }
+
+  const stored = await storedFile(key);
+  if (!stored) {
+    return { error: "The file didn't arrive. Try again." };
+  }
+  // Another size or type than the one signed: the file goes.
+  if (stored.size !== file.size || stored.contentType !== file.contentType) {
+    await deleteFile(key);
+    return { error: "The stored file doesn't match. Try again." };
+  }
+
+  const [row] = await db
+    .insert(attachment)
+    .values({
+      issueId,
+      storageKey: key,
+      fileName: file.fileName,
+      size: stored.size,
+      contentType: file.contentType,
+      uploadedBy: user.id,
+    })
+    .onConflictDoNothing()
+    .returning({ id: attachment.id });
+  return row ?? { error: "This file is attached already." };
 }

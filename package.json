@@ -15,9 +15,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --env-file=.env db/seed.ts",
-    "stripe:setup": "node --env-file-if-exists=.env.local scripts/stripe-setup.ts"
+    "stripe:setup": "node --env-file-if-exists=.env.local scripts/stripe-setup.ts",
+    "storage:setup": "node --env-file-if-exists=.env scripts/storage-setup.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1169.0",
+    "@aws-sdk/s3-request-presigner": "3.1169.0",
     "@base-ui/react": "^1.9.0",
     "better-auth": "^1.7.14",
     "class-variance-authority": "^0.7.1",

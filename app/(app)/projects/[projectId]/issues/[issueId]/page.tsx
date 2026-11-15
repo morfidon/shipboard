@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Attachments } from "@/components/attachments";
 import { EditIssueForm } from "@/components/issue-form";
 import { getIssue, getIssuePermissions } from "@/lib/data";
 
@@ -26,6 +27,7 @@ export default async function IssuePage({
       <div className="mt-6">
         <EditIssueForm issue={issue} />
       </div>
+      <Attachments issueId={issue.id} />
     </div>
   );
 }

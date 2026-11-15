@@ -33,5 +33,21 @@ services:
       timeout: 5s
       retries: 30
 
+  # Files, in an S3-compatible store (RustFS). Made-up local keys; in
+  # production the same code talks to Cloudflare R2 or AWS S3.
+  storage:
+    image: rustfs/rustfs:1.0.5
+    environment:
+      RUSTFS_ACCESS_KEY: shipboard
+      RUSTFS_SECRET_KEY: shipboard-storage
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - storage:/data
+
 volumes:
   pgdata:
+  storage:

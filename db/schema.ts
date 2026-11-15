@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -267,4 +268,23 @@ export const stripeEvent = pgTable("stripe_event", {
   id: text("id").primaryKey(),
   type: text("type").notNull(),
   receivedAt: timestamp("received_at").defaultNow().notNull(),
+});
+
+// A file on an issue. The file itself lives in storage; this row knows
+// where (its key), what it's called, and who uploaded it.
+export const attachment = pgTable("attachment", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  issueId: uuid("issue_id")
+    .notNull()
+    .references(() => issue.id, { onDelete: "cascade" }),
+  storageKey: text("storage_key").notNull().unique(),
+  fileName: text("file_name").notNull(),
+  size: integer("size").notNull(),
+  contentType: text("content_type").notNull(),
+  uploadedBy: text("uploaded_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });

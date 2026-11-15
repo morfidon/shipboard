@@ -15,3 +15,23 @@ export const issueSchema = z.object({
 });
 
 export const statusSchema = z.enum(["todo", "in_progress", "done"]);
+
+// What may be attached to an issue: a few common kinds, up to 10 MB.
+export const attachmentTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+] as const;
+export const maxAttachmentSize = 10 * 1024 * 1024;
+
+export const uploadSchema = z.object({
+  fileName: z.string().trim().min(1).max(200, "Keep the file name short."),
+  size: z
+    .number()
+    .int()
+    .positive("The file is empty.")
+    .max(maxAttachmentSize, "Files can be up to 10 MB."),
+  contentType: z.enum(attachmentTypes, "That type of file isn't allowed."),
+});
