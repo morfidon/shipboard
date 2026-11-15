@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { InviteForm } from "@/components/invite-form";
 import { getMembers, getPendingInvitations, getTeamName } from "@/lib/data";
+
+export const metadata: Metadata = { title: "Team" };
 
 export default async function TeamPage() {
   const [teamName, members, invitations] = await Promise.all([

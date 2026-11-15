@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { NewIssueForm } from "@/components/issue-form";
 import { getProject } from "@/lib/data";
+
+export const metadata: Metadata = { title: "New issue" };
 
 export default async function NewIssuePage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -6,6 +7,16 @@ import { ProjectIssues } from "@/components/project-issues";
 import { buttonVariants } from "@/components/ui/button";
 import { getIssuePermissions, getProject } from "@/lib/data";
 import { parseIssueSearch } from "@/lib/issue-filters";
+
+// The tab shows the project's name. getProject is wrapped in React's cache,
+// so this and the page below share one query.
+export async function generateMetadata({
+  params,
+}: PageProps<"/projects/[projectId]">): Promise<Metadata> {
+  const { projectId } = await params;
+  const project = await getProject(projectId);
+  return { title: project?.name ?? "Project not found" };
+}
 
 export default async function ProjectPage({
   params,

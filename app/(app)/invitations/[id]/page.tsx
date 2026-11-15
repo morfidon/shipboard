@@ -1,7 +1,10 @@
 import { APIError } from "better-auth/api";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { AcceptInvitationForm } from "@/components/accept-invitation-form";
 import { auth } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Invitation" };
 
 // Better Auth shows an invitation only to the person it was sent to.
 async function findInvitation(id: string) {

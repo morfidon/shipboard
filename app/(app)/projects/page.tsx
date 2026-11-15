@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { StarButton } from "@/components/star-button";
@@ -10,6 +11,8 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProjects } from "@/lib/data";
+
+export const metadata: Metadata = { title: "Projects" };
 
 // Not async: the heading needs no data, so it goes into the static shell.
 // Only the list waits for the database, behind its own placeholder.

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { WebVitals } from "@/components/web-vitals";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,7 +18,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Shipboard",
+  // Social previews need full links, like https://.../opengraph-image.
+  metadataBase: new URL(siteUrl),
+  title: {
+    // Pages that set their own title get "Projects · Shipboard".
+    template: "%s · Shipboard",
+    default: "Shipboard",
+  },
   description: "Plan the work, track every issue and ship with confidence.",
 };
 
