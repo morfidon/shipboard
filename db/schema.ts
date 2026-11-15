@@ -260,3 +260,11 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Every Stripe event we've handled, by its id. The id is the primary key,
+// so the same event can't be stored twice.
+export const stripeEvent = pgTable("stripe_event", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+});

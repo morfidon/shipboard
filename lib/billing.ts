@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { db } from "@/db";
-import { member, organization, user } from "@/db/schema";
+import { member, organization, stripeEvent, user } from "@/db/schema";
 import { PRO_PRODUCT_ID } from "@/lib/plans";
 import { stripe } from "@/lib/stripe";
 
@@ -58,7 +58,10 @@ function productOf(price: Stripe.Price) {
   return typeof price.product === "string" ? price.product : price.product.id;
 }
 
-export async function applyStripeEvent(event: Stripe.Event) {
+// Handles each event once, one team at a time: lock the team, check the
+// event's id, ask Stripe, write. Stripe can send the same event again: after
+// a timeout, an error, or a resend. A copy finds its id, and stops there.
+export async function handleStripeEvent(event: Stripe.Event) {
   const customerId = customerOf(event);
   if (!customerId) {
     return;
@@ -68,27 +71,41 @@ export async function applyStripeEvent(event: Stripe.Event) {
     // Waiting for another event of this team: 5 seconds at most. After that,
     // the route fails, and Stripe tries again later.
     await tx.execute(sql`set local lock_timeout = '5s'`);
-    // Our server made this customer for one team. We lock that team's row,
-    // so another event for the same team waits here until this one is saved.
+    // First the lock: another event for the same team waits here.
     const [team] = await tx
       .select({ id: organization.id })
       .from(organization)
       .where(eq(organization.stripeCustomerId, customerId))
       .for("update");
     if (!team) {
-      return null;
+      return "not ours" as const;
     }
+    // Then the event's id, in the same transaction as the change: a copy
+    // stops here, before we ask Stripe anything.
+    const [first] = await tx
+      .insert(stripeEvent)
+      .values({ id: event.id, type: event.type })
+      .onConflictDoNothing()
+      .returning({ id: stripeEvent.id });
+    if (!first) {
+      return "copy" as const;
+    }
+    // Then ask Stripe, and write.
     const now = await planNow(customerId);
     await tx.update(organization).set(now).where(eq(organization.id, team.id));
     return { teamId: team.id, plan: now.plan };
   });
 
-  if (!result) {
+  if (result === "not ours") {
     console.log(`Skipped ${event.type}: not one of our teams.`);
     return;
   }
-  // A new subscription sends a thank-you email, but only when the team
-  // really is on Pro now.
+  if (result === "copy") {
+    console.log(`Already handled ${event.id}, skipped it.`);
+    return;
+  }
+  // The email goes out only after the change is saved, and only when the
+  // team really is on Pro now.
   if (event.type === "customer.subscription.created" && result.plan === "pro") {
     await sendWelcomeEmail(result.teamId);
   }

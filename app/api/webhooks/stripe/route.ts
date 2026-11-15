@@ -1,4 +1,4 @@
-import { applyStripeEvent } from "@/lib/billing";
+import { handleStripeEvent } from "@/lib/billing";
 import { stripe, webhookSecret } from "@/lib/stripe";
 
 // Stripe's doorbell. Stripe signs every event with our endpoint's secret,
@@ -17,6 +17,6 @@ export async function POST(request: Request) {
     return new Response("Invalid signature", { status: 400 });
   }
 
-  await applyStripeEvent(event);
+  await handleStripeEvent(event);
   return Response.json({ received: true });
 }
