@@ -35,6 +35,15 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      {
+        test: {
+          // Components, in a browser made of JavaScript (jsdom).
+          name: "components",
+          include: ["components/**/*.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["tests/components-setup.ts"],
+        },
+      },
     ],
   },
 });
