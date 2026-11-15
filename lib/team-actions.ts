@@ -5,6 +5,8 @@ import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
+import { hit, tooManyTries } from "@/lib/rate-limit";
 
 const roleChoices = ["member", "admin", "viewer"] as const;
 
@@ -21,6 +23,13 @@ export async function inviteAction(
   // The roles the form offers. Anything else becomes a plain member.
   const role =
     roleChoices.find((choice) => choice === formData.get("role")) ?? "member";
+
+  // Every invitation sends an email: 10 per person every hour.
+  const { id } = await getCurrentUser();
+  const limit = await hit(`invite:user:${id}`, 10, 60 * 60);
+  if (!limit.allowed) {
+    return { message: tooManyTries(limit.retryAfterSeconds) };
+  }
 
   try {
     // Better Auth checks that the person asking may invite to their
