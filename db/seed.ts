@@ -2,8 +2,16 @@ import { hashPassword } from "better-auth/crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema.ts";
 
-const { user, account, organization, member, project, issue, stripeEvent } =
-  schema;
+const {
+  user,
+  account,
+  organization,
+  member,
+  project,
+  issue,
+  stripeEvent,
+  rateLimit,
+} = schema;
 const db = drizzle(process.env.DATABASE_URL!, { schema });
 
 // Everyone in the seed signs in with this made-up password. Only for the
@@ -93,6 +101,7 @@ await db.transaction(async (tx) => {
   await tx.delete(organization);
   await tx.delete(user);
   await tx.delete(stripeEvent);
+  await tx.delete(rateLimit);
 
   // Better Auth keeps passwords in the account table, hashed, the same
   // way sign-up stores them.

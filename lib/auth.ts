@@ -11,6 +11,13 @@ import { ac, roles } from "@/lib/permissions";
 // and how people prove who they are.
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
+  // Better Auth's own web addresses for these three are closed. Our actions
+  // call Better Auth directly, with our limits, so they are the only doors.
+  disabledPaths: [
+    "/sign-in/email",
+    "/sign-up/email",
+    "/organization/invite-member",
+  ],
   emailAndPassword: {
     enabled: true,
     // No session until the person proves the email address is theirs.

@@ -288,3 +288,12 @@ export const attachment = pgTable("attachment", {
     .defaultNow()
     .notNull(),
 });
+
+// Counters for rate limits: how many tries a key ("sign-in:email:…") made
+// in the current window, and when the window ends. In the database, so
+// every server counts the same tries.
+export const rateLimit = pgTable("rate_limit", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+});

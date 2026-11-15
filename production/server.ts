@@ -16,6 +16,11 @@ let server: ChildProcess | undefined;
 
 // Starts the production build (`next build` ran first) against the test
 // database, the same way `next start` does on a real server.
+// Production refuses Better Auth's built-in secret. This one lives only as
+// long as the test run; the tests sign people in with it too.
+const secret = randomBytes(32).toString("hex");
+process.env.BETTER_AUTH_SECRET = secret;
+
 export async function startServer() {
   // Port 3100 must be free. Another server there would answer our requests,
   // with another database.
@@ -32,7 +37,7 @@ export async function startServer() {
         BETTER_AUTH_URL: base,
         // Production refuses Better Auth's built-in secret. This one lives
         // only as long as the test run.
-        BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+        BETTER_AUTH_SECRET: secret,
       },
     },
   );
@@ -98,10 +103,12 @@ export async function signedInOwner() {
     role: "owner",
   });
 
-  const response = await fetch(`${base}/api/auth/sign-in/email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Origin: base },
-    body: JSON.stringify({ email: person.email, password: PASSWORD }),
+  // Better Auth's own sign-in address is closed, so the test signs in through
+  // Better Auth's server API, with the same secret as the server.
+  const { auth } = await import("@/lib/auth");
+  const response = await auth.api.signInEmail({
+    body: { email: person.email, password: PASSWORD },
+    asResponse: true,
   });
   if (!response.ok) {
     throw new Error(`Signing in failed: ${response.status}`);
