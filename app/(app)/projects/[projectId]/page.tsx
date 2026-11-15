@@ -3,8 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { IssueListSkeleton } from "@/components/issue-list";
+import { ProjectStatsCard } from "@/components/project-stats";
 import { ProjectIssues } from "@/components/project-issues";
 import { buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getIssuePermissions, getProject } from "@/lib/data";
 import { parseIssueSearch } from "@/lib/issue-filters";
 
@@ -48,6 +50,11 @@ export default async function ProjectPage({
             New issue
           </Link>
         )}
+      </div>
+      <div className="mt-6">
+        <Suspense fallback={<Skeleton className="h-24" />}>
+          <ProjectStatsCard projectId={project.id} />
+        </Suspense>
       </div>
       <div className="mt-6">
         <Suspense fallback={<IssueListSkeleton />}>

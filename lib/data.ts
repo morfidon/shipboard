@@ -109,7 +109,43 @@ async function projectStatsFor(
   // while a new one is made in the background.
   cacheLife("hours");
 
-  const rows = await db
+  const rows = await statsOf(eq(project.organizationId, organizationId));
+
+  // One label for every project in this copy, so a change in any of them
+  // throws the copy away. One cacheTag call takes at most 128 labels, and a
+  // team can have more projects, so each label gets its own call.
+  rows.forEach((row) => cacheTag(projectTag(row.id)));
+  return rows;
+}
+
+// One project's numbers, for the card on its own page.
+export async function getStatsForProject(
+  projectId: string,
+): Promise<ProjectStats | undefined> {
+  const { organizationId } = await getCurrentUser();
+
+  if (!uuidPattern.test(projectId)) {
+    return undefined;
+  }
+  return statsForProject(projectId, organizationId);
+}
+
+async function statsForProject(projectId: string, organizationId: string) {
+  "use cache";
+  cacheLife("hours");
+  // The same label as the dashboard's copy, so every action that changes
+  // this project already throws this copy away too.
+  cacheTag(projectTag(projectId));
+
+  const [row] = await statsOf(
+    and(eq(project.id, projectId), eq(project.organizationId, organizationId)),
+  );
+  return row;
+}
+
+// The projects that match, each with its issues counted by status.
+function statsOf(where: SQL | undefined) {
+  return db
     .select({
       id: project.id,
       name: project.name,
@@ -122,15 +158,9 @@ async function projectStatsFor(
       issue,
       and(eq(issue.projectId, project.id), isNull(issue.archivedAt)),
     )
-    .where(eq(project.organizationId, organizationId))
+    .where(where)
     .groupBy(project.id)
     .orderBy(project.name);
-
-  // One label for every project in this copy, so a change in any of them
-  // throws the copy away. One cacheTag call takes at most 128 labels, and a
-  // team can have more projects, so each label gets its own call.
-  rows.forEach((row) => cacheTag(projectTag(row.id)));
-  return rows;
 }
 
 // The label on every saved copy that holds a project's numbers.

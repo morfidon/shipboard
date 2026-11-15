@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProjectStats, type ProjectStats } from "@/lib/data";
+import {
+  getProjectStats,
+  getStatsForProject,
+  type ProjectStats,
+} from "@/lib/data";
 
 // The dashboard: one card per project, with its issues counted by status.
 export async function ProjectStatsList() {
@@ -29,6 +33,22 @@ export async function ProjectStatsList() {
         </li>
       ))}
     </ul>
+  );
+}
+
+// The project page: the same three numbers, for one project.
+export async function ProjectStatsCard({ projectId }: { projectId: string }) {
+  const stats = await getStatsForProject(projectId);
+  if (!stats) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        <StatusCounts stats={stats} />
+      </CardContent>
+    </Card>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   getProject,
   getProjects,
   getProjectStats,
+  getStatsForProject,
   getUsers,
 } from "@/lib/data";
 import {
@@ -127,6 +128,31 @@ describe("getProjectStats", () => {
     const stats = await getProjectStats();
 
     expect(stats.map((s) => s.name)).toEqual(["Website relaunch"]);
+  });
+});
+
+describe("getStatsForProject", () => {
+  it("counts one project's issues by status", async () => {
+    const website = await ourProject({ name: "Website relaunch" });
+    const mobile = await ourProject({ name: "Mobile app" });
+    await createIssue({ projectId: website.id, status: "in_progress" });
+    await createIssue({ projectId: website.id, status: "done" });
+    await createIssue({ projectId: mobile.id, status: "todo" });
+
+    expect(await getStatsForProject(website.id)).toEqual({
+      id: website.id,
+      name: "Website relaunch",
+      todo: 0,
+      inProgress: 1,
+      done: 1,
+    });
+  });
+
+  it("hides another team's project", async () => {
+    const theirs = await createProject({ name: "Customer portal" });
+    await createIssue({ projectId: theirs.id });
+
+    expect(await getStatsForProject(theirs.id)).toBeUndefined();
   });
 });
 
