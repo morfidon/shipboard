@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:production": "next build && vitest run --config vitest.production.config.mts",
+    "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --env-file=.env db/seed.ts",
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@next/env": "^16.4.3",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
