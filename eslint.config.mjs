@@ -22,6 +22,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Playwright's fixtures hand over their value with a function named
+    // use(). It isn't React's use() hook.
+    files: ["e2e/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

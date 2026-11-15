@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./test";
 
 test.describe("a viewer", () => {
-  test.use({ storageState: "playwright/.auth/viewer.json" });
+  test.use({ role: "viewer" });
 
   test("reads the issues, with no way to add one", async ({ page }) => {
     await page.goto("/projects");
@@ -13,7 +13,7 @@ test.describe("a viewer", () => {
 });
 
 test.describe("a member", () => {
-  test.use({ storageState: "playwright/.auth/member.json" });
+  test.use({ role: "member" });
 
   test("sees the plan, but can't change it", async ({ page }) => {
     await page.goto("/team");
@@ -26,7 +26,7 @@ test.describe("a member", () => {
 });
 
 test.describe("an owner", () => {
-  test.use({ storageState: "playwright/.auth/owner.json" });
+  test.use({ role: "owner" });
 
   test("can upgrade the team", async ({ page }) => {
     await page.goto("/team");

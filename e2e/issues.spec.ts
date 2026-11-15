@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./test";
 
-// Signed in as Lena, a member of Acme, by the setup project.
-test.use({ storageState: "playwright/.auth/member.json" });
+// Signed in as Lena, a member of Acme.
+test.use({ role: "member" });
 
 test("a member creates an issue and sees it in the list", async ({ page }) => {
   await page.goto("/projects");
