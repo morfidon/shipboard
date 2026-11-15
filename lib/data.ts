@@ -23,7 +23,8 @@ import {
   user,
 } from "@/db/schema";
 import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
-import { can, type IssueAction } from "@/lib/permissions";
+import { can, canManageBilling, type IssueAction } from "@/lib/permissions";
+import type { Plan } from "@/lib/plans";
 
 export type IssueStatus = (typeof issueStatus.enumValues)[number];
 
@@ -219,6 +220,28 @@ export async function getTeamName(): Promise<string> {
     .from(organization)
     .where(eq(organization.id, organizationId));
   return row.name;
+}
+
+export type Billing = {
+  plan: Plan;
+  status: string | null;
+  customerId: string | null;
+  canManage: boolean;
+};
+
+// The team's plan, and whether this person may change it.
+export async function getBilling(): Promise<Billing> {
+  const { organizationId, role } = await getCurrentUser();
+
+  const [row] = await db
+    .select({
+      plan: organization.plan,
+      status: organization.planStatus,
+      customerId: organization.stripeCustomerId,
+    })
+    .from(organization)
+    .where(eq(organization.id, organizationId));
+  return { ...row, canManage: canManageBilling(role) };
 }
 
 export type Member = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can } from "@/lib/permissions";
+import { can, canManageBilling } from "@/lib/permissions";
 
 // Every role against every action: the whole table, one row per test.
 const matrix = [
@@ -24,5 +24,17 @@ describe("can", () => {
 
   it("refuses a role it doesn't know", () => {
     expect(can("intern", "update")).toBe(false);
+  });
+});
+
+describe("canManageBilling", () => {
+  it.each([
+    ["owner", true],
+    ["admin", true],
+    ["member", false],
+    ["viewer", false],
+    ["intern", false],
+  ] as const)("%s may manage billing: %s", (role, allowed) => {
+    expect(canManageBilling(role)).toBe(allowed);
   });
 });

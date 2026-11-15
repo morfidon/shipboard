@@ -1,15 +1,28 @@
 import type { Metadata } from "next";
 import { InviteForm } from "@/components/invite-form";
-import { getMembers, getPendingInvitations, getTeamName } from "@/lib/data";
+import { SubmitButton } from "@/components/submit-button";
+import { manageBillingAction, upgradeAction } from "@/lib/billing-actions";
+import {
+  getBilling,
+  getMembers,
+  getPendingInvitations,
+  getTeamName,
+} from "@/lib/data";
 
 export const metadata: Metadata = { title: "Team" };
 
 export default async function TeamPage() {
-  const [teamName, members, invitations] = await Promise.all([
+  const [teamName, members, invitations, billing] = await Promise.all([
     getTeamName(),
     getMembers(),
     getPendingInvitations(),
+    getBilling(),
   ]);
+  const isPro = billing.plan === "pro";
+  // A subscription that isn't over yet, as Stripe's last event told us.
+  const hasSubscription =
+    billing.status !== null &&
+    !["canceled", "incomplete_expired"].includes(billing.status);
 
   return (
     <div className="flex max-w-2xl flex-col gap-8">
@@ -31,6 +44,39 @@ export default async function TeamPage() {
           </li>
         ))}
       </ul>
+      <section className="flex flex-col gap-3 rounded-md border p-4">
+        <h2 className="text-lg font-semibold">Plan</h2>
+        {isPro ? (
+          <p>Pro ({billing.status}): file attachments on every issue.</p>
+        ) : hasSubscription ? (
+          <p>
+            Free for now: the subscription is {billing.status}. Manage billing
+            to fix the payment.
+          </p>
+        ) : (
+          <p>Free. Pro adds file attachments on every issue, for $9 a month.</p>
+        )}
+        {billing.canManage && (
+          <div className="flex flex-wrap gap-2">
+            {!isPro && !hasSubscription && (
+              <form action={upgradeAction}>
+                <SubmitButton
+                  label="Upgrade to Pro"
+                  pendingLabel="Opening Stripe…"
+                />
+              </form>
+            )}
+            {billing.customerId && (
+              <form action={manageBillingAction}>
+                <SubmitButton
+                  label="Manage billing"
+                  pendingLabel="Opening Stripe…"
+                />
+              </form>
+            )}
+          </div>
+        )}
+      </section>
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold">Invite someone</h2>
         <InviteForm />

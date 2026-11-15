@@ -16,5 +16,6 @@ export const config = {
     "/projects/:path*",
     "/team/:path*",
     "/invitations/:path*",
+    "/billing/:path*",
   ],
 };

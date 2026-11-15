@@ -94,6 +94,10 @@ export const organization = pgTable("organization", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at"),
   metadata: text("metadata"),
+  // Billing, kept up to date by Stripe. Every team starts on Free.
+  plan: text("plan").$type<"free" | "pro">().notNull().default("free"),
+  planStatus: text("plan_status"),
+  stripeCustomerId: text("stripe_customer_id").unique(),
 });
 
 // Who belongs to which team, and with which role.
