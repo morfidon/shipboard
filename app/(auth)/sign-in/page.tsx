@@ -16,7 +16,10 @@ export default function SignInPage() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Sign in to Shipboard</CardTitle>
+        <CardTitle>
+          {/* The page's one main heading, for screen readers and axe. */}
+          <h1>Sign in to Shipboard</h1>
+        </CardTitle>
         <CardDescription>Use your work email and password.</CardDescription>
       </CardHeader>
       <CardContent>

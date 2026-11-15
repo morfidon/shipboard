@@ -3,10 +3,11 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { issue } from "@/db/schema";
+import { issue, project } from "@/db/schema";
 import {
   archiveIssueAction,
   createIssueAction,
+  createProjectAction,
   updateIssueAction,
   updateIssueStatusAction,
 } from "@/lib/actions";
@@ -112,6 +113,55 @@ describe("createIssueAction", () => {
 
     expect(state.message).toBe("Project not found.");
     expect(await titlesIn(theirs.id)).toEqual([]);
+  });
+});
+
+describe("createProjectAction", () => {
+  async function projectsOfTeam() {
+    const rows = await db
+      .select({ id: project.id, name: project.name })
+      .from(project)
+      .where(eq(project.organizationId, organizationId));
+    return rows;
+  }
+
+  it("creates the project in the person's team and goes to it", async () => {
+    await createProjectAction(
+      {},
+      form({ name: "Launch plan", description: "The first release." }),
+    );
+
+    const [created] = await projectsOfTeam();
+    expect(created.name).toBe("Launch plan");
+    expect(redirect).toHaveBeenCalledWith(`/projects/${created.id}`);
+    expect(updateTag).toHaveBeenCalledWith(`team-${organizationId}`);
+  });
+
+  it("returns the errors and the typed text when the name is blank", async () => {
+    const state = await createProjectAction(
+      {},
+      form({ name: "  ", description: "The first release." }),
+    );
+
+    expect(state).toEqual({
+      errors: { name: ["Give the project a name."] },
+      values: { name: "  ", description: "The first release." },
+    });
+    expect(await projectsOfTeam()).toEqual([]);
+  });
+
+  it("refuses a member", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: "lena",
+      name: "Lena Fischer",
+      organizationId,
+      role: "member",
+    });
+
+    await expect(
+      createProjectAction({}, form({ name: "Side project", description: "" })),
+    ).rejects.toThrow("A member can't create projects.");
+    expect(await projectsOfTeam()).toEqual([]);
   });
 });
 

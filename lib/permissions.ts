@@ -11,6 +11,7 @@ import {
 const statement = {
   ...defaultStatements,
   issue: ["create", "update", "archive"],
+  project: ["create"],
   billing: ["manage"],
 } as const;
 
@@ -22,11 +23,13 @@ export const roles = {
   owner: ac.newRole({
     ...ownerAc.statements,
     issue: ["create", "update", "archive"],
+    project: ["create"],
     billing: ["manage"],
   }),
   admin: ac.newRole({
     ...adminAc.statements,
     issue: ["create", "update", "archive"],
+    project: ["create"],
     billing: ["manage"],
   }),
   member: ac.newRole({
@@ -57,4 +60,13 @@ export function canManageBilling(role: string): boolean {
     return false;
   }
   return permissions.authorize({ billing: ["manage"] }).success;
+}
+
+// May someone with this role start a new project for the team?
+export function canCreateProjects(role: string): boolean {
+  const permissions = roles[role as keyof typeof roles];
+  if (!permissions) {
+    return false;
+  }
+  return permissions.authorize({ project: ["create"] }).success;
 }

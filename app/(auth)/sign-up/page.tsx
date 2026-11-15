@@ -16,7 +16,10 @@ export default function SignUpPage() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Create your Shipboard account</CardTitle>
+        <CardTitle>
+          {/* The page's one main heading, for screen readers and axe. */}
+          <h1>Create your Shipboard account</h1>
+        </CardTitle>
         <CardDescription>It takes a minute.</CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,9 +1,13 @@
+import { mkdirSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 import { allServers, workers } from "./e2e/servers";
 
 // The test settings, and nothing else: never .env.local, where the real
 // sandbox keys live. A value set in the terminal still wins.
 process.loadEnvFile(".env.test");
+
+// The folder for the servers' terminals must exist before they start.
+mkdirSync("playwright/.servers", { recursive: true });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -39,17 +43,19 @@ export default defineConfig({
     },
   ],
 
-  /* Build the app once, then start one production server per worker. */
-  webServer: allServers().map((server, index) => ({
-    command:
-      (index === 0 ? "pnpm build && " : "") +
-      `pnpm start --port ${server.port}`,
+  /* One production server per worker. pnpm test:e2e builds the app first:
+     NODE_OPTIONS below would load the fake into the build's tools too. */
+  webServer: allServers().map((server) => ({
+    // Each server's terminal goes to a file: for now, that's the inbox.
+    command: `pnpm start --port ${server.port} > playwright/.servers/${server.port}.log`,
     url: server.url,
     // A server we didn't start may be an old build, or use another database.
     reuseExistingServer: false,
     env: {
       DATABASE_URL: server.databaseUrl,
       BETTER_AUTH_URL: server.url,
+      // Node loads our fake Stripe before the app.
+      NODE_OPTIONS: "--import ./e2e/fake-stripe.ts",
     },
   })),
 });

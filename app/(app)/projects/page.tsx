@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { NewProjectForm } from "@/components/new-project-form";
 import { StarButton } from "@/components/star-button";
 import {
   Card,
@@ -10,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProjects } from "@/lib/data";
+import { getProjectPermissions, getProjects } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Projects" };
 
@@ -22,6 +23,9 @@ export default function ProjectsPage() {
       <h1 className="text-2xl font-bold">Projects</h1>
       <Suspense fallback={<ProjectListSkeleton />}>
         <ProjectList />
+      </Suspense>
+      <Suspense>
+        <NewProject />
       </Suspense>
     </div>
   );
@@ -58,6 +62,21 @@ async function ProjectList() {
         ))}
       </ul>
     </>
+  );
+}
+
+// Only for people who may start a project.
+async function NewProject() {
+  const can = await getProjectPermissions();
+  if (!can.create) {
+    return null;
+  }
+
+  return (
+    <section className="mt-10 flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">New project</h2>
+      <NewProjectForm />
+    </section>
   );
 }
 

@@ -1,11 +1,13 @@
 import { expect, test as setup } from "@playwright/test";
 import { allServers } from "./servers";
 
-// One person from the seed for each role, all in Acme.
+// One person from the seed for each role in Acme, and Gina, who owns
+// another team: Globex.
 const people = {
   owner: "maya@example.com",
   member: "lena@example.com",
   viewer: "priya@example.com",
+  globex: "gina@example.com",
 };
 
 // A session is a row in one database, so every server needs its own: this

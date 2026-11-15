@@ -6,12 +6,14 @@ import { z } from "zod";
 import {
   archiveIssue,
   createIssue,
+  createProject,
   projectTag,
+  teamTag,
   updateIssue,
   updateIssueStatus,
   type IssueStatus,
 } from "@/lib/data";
-import { issueSchema, statusSchema } from "@/lib/schemas";
+import { issueSchema, projectSchema, statusSchema } from "@/lib/schemas";
 
 // Every action here is a public endpoint: anyone can call it with any
 // arguments. The data layer checks who is asking and what their role may
@@ -103,4 +105,28 @@ export async function archiveIssueAction(
 
   updateTag(projectTag(archived.projectId));
   return {};
+}
+
+export type ProjectFormState = {
+  errors?: { name?: string[]; description?: string[] };
+  values?: { name: string; description: string };
+};
+
+export async function createProjectAction(
+  _previous: ProjectFormState,
+  formData: FormData,
+): Promise<ProjectFormState> {
+  const values = {
+    name: String(formData.get("name") ?? ""),
+    description: String(formData.get("description") ?? ""),
+  };
+  const result = projectSchema.safeParse(values);
+  if (!result.success) {
+    return { errors: z.flattenError(result.error).fieldErrors, values };
+  }
+
+  const created = await createProject(result.data);
+  // The dashboard's copy lists the team's projects: a new one must show.
+  updateTag(teamTag(created.organizationId));
+  redirect(`/projects/${created.id}`);
 }

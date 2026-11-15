@@ -24,7 +24,12 @@ import {
   user,
 } from "@/db/schema";
 import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
-import { can, canManageBilling, type IssueAction } from "@/lib/permissions";
+import {
+  can,
+  canCreateProjects,
+  canManageBilling,
+  type IssueAction,
+} from "@/lib/permissions";
 import type { Plan } from "@/lib/plans";
 import { deleteFile, downloadUrl, storedFile, uploadUrl } from "@/lib/storage";
 
@@ -112,6 +117,9 @@ async function projectStatsFor(
   // while a new one is made in the background.
   cacheLife("hours");
 
+  // One label for the team's list of projects, so a new project throws the
+  // copy away too.
+  cacheTag(teamTag(organizationId));
   const rows = await statsOf(eq(project.organizationId, organizationId));
 
   // One label for every project in this copy, so a change in any of them
@@ -166,6 +174,11 @@ function statsOf(where: SQL | undefined) {
     .orderBy(project.name);
 }
 
+// The label on the saved copy of a team's list of projects.
+export function teamTag(organizationId: string) {
+  return `team-${organizationId}`;
+}
+
 // The label on every saved copy that holds a project's numbers.
 export function projectTag(projectId: string) {
   return `project-${projectId}`;
@@ -198,6 +211,29 @@ export const getProject = cache(
     return row;
   },
 );
+
+// May this person start a new project? The page shows the form only then.
+export async function getProjectPermissions(): Promise<{ create: boolean }> {
+  const { role } = await getCurrentUser();
+  return { create: canCreateProjects(role) };
+}
+
+// A new project in the person's team, for a role that may create one.
+export async function createProject(values: {
+  name: string;
+  description: string;
+}): Promise<{ id: string; organizationId: string }> {
+  const user = await getCurrentUser();
+  if (!canCreateProjects(user.role)) {
+    throw new Error(`A ${user.role} can't create projects.`);
+  }
+
+  const [row] = await db
+    .insert(project)
+    .values({ ...values, organizationId: user.organizationId })
+    .returning({ id: project.id, organizationId: project.organizationId });
+  return row;
+}
 
 // What the person's role lets them do with issues, so the screen shows only
 // buttons that work. Hiding a button protects nothing: the writes check again.

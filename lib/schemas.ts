@@ -14,6 +14,19 @@ export const issueSchema = z.object({
     .max(5000, "Keep the description to 5,000 characters or fewer."),
 });
 
+// A new project: a name, and a few words about it.
+export const projectSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Give the project a name.")
+    .max(80, "Keep the name to 80 characters or fewer."),
+  description: z
+    .string()
+    .trim()
+    .max(500, "Keep the description to 500 characters or fewer."),
+});
+
 export const statusSchema = z.enum(["todo", "in_progress", "done"]);
 
 // What may be attached to an issue: a few common kinds, up to 10 MB.
