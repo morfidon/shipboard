@@ -33,9 +33,12 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    /* Signs in once per role, before the tests that need it. */
+    { name: "setup", testMatch: /.*\.setup\.ts/ },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
     },
   ],
 
