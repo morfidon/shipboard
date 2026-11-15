@@ -50,9 +50,12 @@ export function IssueList({
   );
 }
 
+// Grey boxes say nothing to a screen reader: role="status" and a hidden
+// line tell it, and our tests, that the issues are on their way.
 export function IssueListSkeleton() {
   return (
-    <div className="flex flex-col gap-2">
+    <div role="status" className="flex flex-col gap-2">
+      <span className="sr-only">Loading issues…</span>
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
