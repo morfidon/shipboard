@@ -11,6 +11,9 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  // No page shows monospace text, so don't download it on every page.
+  // A page that uses it still gets it.
+  preload: false,
 });
 
 export const metadata: Metadata = {
