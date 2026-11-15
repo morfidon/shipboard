@@ -3,18 +3,13 @@ import { expect, test } from "./test";
 // Signed in as Lena, a member of Acme.
 test.use({ role: "member" });
 
-test("a member creates an issue and sees it in the list", async ({ page }) => {
-  await page.goto("/projects");
-  await page.getByRole("link", { name: "Website relaunch" }).click();
-  await page.getByRole("link", { name: "New issue" }).click();
+test("a member creates an issue and sees it in the list", async ({
+  project,
+  projectPage,
+}) => {
+  await projectPage.open(project.id);
 
-  const dialog = page.getByRole("dialog", { name: "New issue" });
-  await dialog.getByLabel("Title").fill("Check the footer links");
-  await dialog.getByRole("button", { name: "Create issue" }).click();
+  await projectPage.createIssue("Check the footer links");
 
-  // Web-first: each check waits until it's true, up to 5 seconds.
-  await expect(dialog).toBeHidden();
-  await expect(
-    page.getByRole("link", { name: "Check the footer links" }),
-  ).toBeVisible();
+  await expect(projectPage.issue("Check the footer links")).toBeVisible();
 });
