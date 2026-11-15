@@ -37,6 +37,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The coverage report that Vitest writes.
     "coverage/**",
+    // What Playwright writes: reports, traces, and the trace viewer's own code.
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
   ]),
 ]);
 
