@@ -175,7 +175,6 @@ export const issue = pgTable(
     title: text("title").notNull(),
     description: text("description").notNull().default(""),
     status: issueStatus("status").notNull().default("todo"),
-    priority: text("priority").notNull().default("normal"),
     assigneeId: text("assignee_id").references(() => user.id, {
       onDelete: "set null",
     }),

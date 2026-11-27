@@ -1,1 +1,0 @@
-ALTER TABLE "issue" ADD COLUMN "priority" text DEFAULT 'normal' NOT NULL;
