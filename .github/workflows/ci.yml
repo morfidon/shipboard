@@ -52,7 +52,7 @@ jobs:
         # Port 5433 on the runner leads to 5432 in the container:
         # the address .env.test gives our tests.
         ports:
-          - 5434:5432
+          - 5433:5432
         # The steps wait until Postgres answers on that port.
         options: >-
           --health-cmd "pg_isready -h 127.0.0.1 -U shipboard -d shipboard_test"
