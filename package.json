@@ -15,7 +15,7 @@
     "test:production": "next build && vitest run --config vitest.production.config.mts",
     "test:e2e": "next build && playwright test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node --env-file-if-exists=.env db/migrate.ts",
     "db:seed": "node --env-file=.env db/seed.ts",
     "stripe:setup": "node --env-file-if-exists=.env.local scripts/stripe-setup.ts",
     "storage:setup": "node --env-file-if-exists=.env scripts/storage-setup.ts"
