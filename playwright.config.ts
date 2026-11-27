@@ -22,8 +22,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   /* One worker for each test server. */
   workers,
-  /* Each test on its own line in the terminal, and the HTML report on disk. */
-  reporter: [["list"], ["html", { open: "never" }]],
+  /* Each test on its own line in the terminal. On our machine, the HTML report
+     on disk; in CI, a blob report that a later job merges with the others. */
+  reporter: process.env.CI
+    ? [["list"], ["blob"]]
+    : [["list"], ["html", { open: "never" }]],
   /* A fresh database for every worker before the tests. */
   globalSetup: "./e2e/global-setup.ts",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
