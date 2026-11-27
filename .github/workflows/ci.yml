@@ -72,12 +72,6 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    # Two machines, each with half of the tests. A failing half
-    # doesn't stop the other one.
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
     # The same Postgres as the integration job. Our e2e setup makes a
     # seeded database on it, and a copy for each worker.
     services:
@@ -99,30 +93,11 @@ jobs:
       - uses: ./.github/actions/setup
       # Chromium, and the system libraries it needs on Ubuntu.
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e --shard=${{ matrix.shard }}/2
-      # This half's results, for the job below to merge.
+      - run: pnpm test:e2e
+      # The report, with a trace of every retried test. Uploaded when tests
+      # fail too: that's when we need it most.
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
-        with:
-          name: blob-report-${{ matrix.shard }}
-          path: blob-report/
-          retention-days: 1
-
-  # One HTML report from both halves.
-  e2e-report:
-    if: ${{ !cancelled() }}
-    needs: e2e
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-      - uses: actions/download-artifact@v8
-        with:
-          path: all-blob-reports
-          pattern: blob-report-*
-          merge-multiple: true
-      - run: pnpm exec playwright merge-reports --reporter html ./all-blob-reports
-      - uses: actions/upload-artifact@v7
         with:
           name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
