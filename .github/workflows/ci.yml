@@ -64,3 +64,36 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm test --project integration
       - run: pnpm test:production
+
+  e2e:
+    runs-on: ubuntu-latest
+    # The same Postgres as the integration job. Our e2e setup makes a
+    # seeded database on it, and a copy for each worker.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: shipboard
+          POSTGRES_PASSWORD: shipboard
+          POSTGRES_DB: shipboard_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U shipboard -d shipboard_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Chromium, and the system libraries it needs on Ubuntu.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      # The report, with a trace of every retried test. Uploaded when tests
+      # fail too: that's when we need it most.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: playwright-report/
+          retention-days: 14
