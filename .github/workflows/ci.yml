@@ -10,6 +10,13 @@ on:
 permissions:
   contents: read
 
+# Two values the app reads when it's built and started. On our machine
+# they come from .env, which Git never sees. Made up, like the keys in
+# .env.test: nothing outside this runner trusts them.
+env:
+  BETTER_AUTH_SECRET: made-up-for-ci-only-never-a-real-secret
+  BETTER_AUTH_URL: http://localhost:3000
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -31,3 +38,29 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm test --project unit --project components
+
+  integration:
+    runs-on: ubuntu-latest
+    # A Postgres next to the job, like db-test in compose.yaml.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: shipboard
+          POSTGRES_PASSWORD: shipboard
+          POSTGRES_DB: shipboard_test
+        # Port 5433 on the runner leads to 5432 in the container:
+        # the address .env.test gives our tests.
+        ports:
+          - 5433:5432
+        # The steps wait until Postgres answers on that port.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U shipboard -d shipboard_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm test --project integration
+      - run: pnpm test:production
