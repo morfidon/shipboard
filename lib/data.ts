@@ -57,6 +57,8 @@ export type IssueFilters = {
   statuses?: IssueStatus[];
   assigneeId?: string;
   page?: number;
+  // "updated": the latest change first. Missing: the newest issue first.
+  sort?: "updated";
 };
 
 export const PAGE_SIZE = 10;
@@ -347,7 +349,7 @@ export async function getUsers(): Promise<Person[]> {
 
 export async function getIssues(
   projectId: string,
-  { statuses, assigneeId, page = 1 }: IssueFilters = {},
+  { statuses, assigneeId, page = 1, sort }: IssueFilters = {},
 ): Promise<{ items: Issue[]; total: number; page: number }> {
   const { organizationId } = await getCurrentUser();
 
@@ -358,6 +360,8 @@ export async function getIssues(
     statuses ? inArray(issue.status, statuses) : undefined,
     assigneeId ? eq(issue.assigneeId, assigneeId) : undefined,
   );
+  // Which time puts the issues in order.
+  const time = sort === "updated" ? issue.updatedAt : issue.createdAt;
 
   const [items, [{ total }]] = await Promise.all([
     db
@@ -370,8 +374,8 @@ export async function getIssues(
       .from(issue)
       .leftJoin(user, eq(issue.assigneeId, user.id))
       .where(where)
-      // Newest first. The id breaks ties, so the order is always the same.
-      .orderBy(desc(issue.createdAt), desc(issue.id))
+      // Latest first. The id breaks ties, so the order is always the same.
+      .orderBy(desc(time), desc(issue.id))
       .limit(PAGE_SIZE)
       .offset((page - 1) * PAGE_SIZE),
     db.select({ total: count() }).from(issue).where(where),
@@ -381,7 +385,12 @@ export async function getIssues(
   // ?page=999): ask again, for the last page.
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > lastPage) {
-    return getIssues(projectId, { statuses, assigneeId, page: lastPage });
+    return getIssues(projectId, {
+      statuses,
+      assigneeId,
+      page: lastPage,
+      sort,
+    });
   }
 
   return { items, total, page };

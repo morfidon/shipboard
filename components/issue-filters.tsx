@@ -44,6 +44,17 @@ export function IssueFilters({
           ))}
         </select>
       </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Sort
+        <select
+          name="sort"
+          defaultValue={search.sort ?? ""}
+          className={selectClass}
+        >
+          <option value="">Newest</option>
+          <option value="updated">Recently updated</option>
+        </select>
+      </label>
       <Button type="submit" variant="outline">
         Apply
       </Button>

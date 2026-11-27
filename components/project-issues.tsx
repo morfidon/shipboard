@@ -30,6 +30,7 @@ export async function ProjectIssues({
       statuses: search.status ? statusFilters[search.status] : undefined,
       assigneeId: search.assignee,
       page: search.page,
+      sort: search.sort,
     }),
   ]);
   const filtered = Boolean(search.status || search.assignee);
@@ -38,7 +39,7 @@ export async function ProjectIssues({
     <div className="flex flex-col gap-4">
       {/* A new key resets the form when Back or a link changes the URL. */}
       <IssueFilters
-        key={`${search.status}-${search.assignee}`}
+        key={`${search.status}-${search.assignee}-${search.sort}`}
         search={search}
         people={people}
       />

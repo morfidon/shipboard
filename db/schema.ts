@@ -190,6 +190,10 @@ export const issue = pgTable(
   (table) => [
     index("issue_project_id_status_idx").on(table.projectId, table.status),
     index("issue_assignee_id_idx").on(table.assigneeId),
+    index("issue_project_id_updated_at_idx").on(
+      table.projectId,
+      table.updatedAt,
+    ),
   ],
 );
 
