@@ -45,6 +45,7 @@ export function issuesHref(projectId: string, search: IssueSearch) {
   const query = new URLSearchParams();
   if (search.status) query.set("status", search.status);
   if (search.assignee) query.set("assignee", search.assignee);
+  if (search.sort) query.set("sort", search.sort);
   if (search.page > 1) query.set("page", String(search.page));
 
   const text = query.toString();
