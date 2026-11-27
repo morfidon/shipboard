@@ -10,6 +10,13 @@ on:
 permissions:
   contents: read
 
+# Two values the app reads when it's built and started. On our machine
+# they come from .env, which Git never sees. Made up, like the keys in
+# .env.test: nothing outside this runner trusts them.
+env:
+  BETTER_AUTH_SECRET: made-up-for-ci-only-never-a-real-secret
+  BETTER_AUTH_URL: http://localhost:3000
+
 jobs:
   lint:
     runs-on: ubuntu-latest
