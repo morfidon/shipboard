@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { issue } from "@/db/schema";
 import { IssueFilters } from "@/components/issue-filters";
 import { IssueList } from "@/components/issue-list";
 import { Pagination } from "@/components/pagination";
@@ -31,7 +30,7 @@ export async function ProjectIssues({
       statuses: search.status ? statusFilters[search.status] : undefined,
       assigneeId: search.assignee,
       page: search.page,
-      orderBy: search.sort === "updated" ? issue.updatedAt : undefined,
+      sort: search.sort,
     }),
   ]);
   const filtered = Boolean(search.status || search.assignee);

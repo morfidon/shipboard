@@ -10,7 +10,6 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
@@ -58,8 +57,8 @@ export type IssueFilters = {
   statuses?: IssueStatus[];
   assigneeId?: string;
   page?: number;
-  // The column that puts the issues in order: newest first by default.
-  orderBy?: AnyPgColumn;
+  // "updated": the latest change first. Missing: the newest issue first.
+  sort?: "updated";
 };
 
 export const PAGE_SIZE = 10;
@@ -350,12 +349,7 @@ export async function getUsers(): Promise<Person[]> {
 
 export async function getIssues(
   projectId: string,
-  {
-    statuses,
-    assigneeId,
-    page = 1,
-    orderBy = issue.createdAt,
-  }: IssueFilters = {},
+  { statuses, assigneeId, page = 1, sort }: IssueFilters = {},
 ): Promise<{ items: Issue[]; total: number; page: number }> {
   const { organizationId } = await getCurrentUser();
 
@@ -366,6 +360,8 @@ export async function getIssues(
     statuses ? inArray(issue.status, statuses) : undefined,
     assigneeId ? eq(issue.assigneeId, assigneeId) : undefined,
   );
+  // Which time puts the issues in order.
+  const time = sort === "updated" ? issue.updatedAt : issue.createdAt;
 
   const [items, [{ total }]] = await Promise.all([
     db
@@ -378,8 +374,8 @@ export async function getIssues(
       .from(issue)
       .leftJoin(user, eq(issue.assigneeId, user.id))
       .where(where)
-      // The latest first. The id breaks ties, so the order is always the same.
-      .orderBy(desc(orderBy), desc(issue.id))
+      // Latest first. The id breaks ties, so the order is always the same.
+      .orderBy(desc(time), desc(issue.id))
       .limit(PAGE_SIZE)
       .offset((page - 1) * PAGE_SIZE),
     db.select({ total: count() }).from(issue).where(where),
@@ -393,7 +389,7 @@ export async function getIssues(
       statuses,
       assigneeId,
       page: lastPage,
-      orderBy,
+      sort,
     });
   }
 
