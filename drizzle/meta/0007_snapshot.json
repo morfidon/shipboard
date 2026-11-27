@@ -1,5 +1,5 @@
 {
-  "id": "48b9a4db-22b2-4e1c-82ca-c378c18f1db5",
+  "id": "95bd629f-c49d-4398-aad7-06a4e68f9f9f",
   "prevId": "76c06c93-c0b8-4587-bbb0-e09a9cdb713b",
   "version": "7",
   "dialect": "postgresql",
@@ -387,7 +387,8 @@
           "name": "priority",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'normal'"
         },
         "assignee_id": {
           "name": "assignee_id",
