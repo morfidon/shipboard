@@ -102,3 +102,53 @@ jobs:
           name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
           retention-days: 14
+
+  migrations:
+    runs-on: ubuntu-latest
+    # Its own Postgres, named like the one on our machine.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: shipboard
+          POSTGRES_PASSWORD: shipboard
+          POSTGRES_DB: shipboard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U shipboard -d shipboard"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://shipboard:shipboard@localhost:5432/shipboard
+    steps:
+      # The whole history, so we can reach main as it was.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+
+      - name: Every schema change has its migration
+        run: |
+          pnpm db:generate | tee "$RUNNER_TEMP/generate.log"
+          grep -q "No schema changes, nothing to migrate" "$RUNNER_TEMP/generate.log"
+          test -z "$(git status --porcelain -- drizzle)"
+
+      # In a pull request, HEAD is the merge of our branch into main,
+      # and HEAD^1 is main as it was.
+      - name: Migrations that already ran stay as they are
+        if: github.event_name == 'pull_request'
+        run: git diff --exit-code --diff-filter=MD HEAD^1 -- 'drizzle/*.sql'
+
+      - name: The database as main has it, with data in it
+        if: github.event_name == 'pull_request'
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/main" HEAD^1
+          cd "$RUNNER_TEMP/main"
+          pnpm install --frozen-lockfile
+          pnpm db:migrate
+          node db/seed.ts
+
+      - name: Our migrations, on top of it
+        run: pnpm db:migrate
