@@ -10,6 +10,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
@@ -57,6 +58,8 @@ export type IssueFilters = {
   statuses?: IssueStatus[];
   assigneeId?: string;
   page?: number;
+  // The column that puts the issues in order: newest first by default.
+  orderBy?: AnyPgColumn;
 };
 
 export const PAGE_SIZE = 10;
@@ -347,7 +350,12 @@ export async function getUsers(): Promise<Person[]> {
 
 export async function getIssues(
   projectId: string,
-  { statuses, assigneeId, page = 1 }: IssueFilters = {},
+  {
+    statuses,
+    assigneeId,
+    page = 1,
+    orderBy = issue.createdAt,
+  }: IssueFilters = {},
 ): Promise<{ items: Issue[]; total: number; page: number }> {
   const { organizationId } = await getCurrentUser();
 
@@ -370,8 +378,8 @@ export async function getIssues(
       .from(issue)
       .leftJoin(user, eq(issue.assigneeId, user.id))
       .where(where)
-      // Newest first. The id breaks ties, so the order is always the same.
-      .orderBy(desc(issue.createdAt), desc(issue.id))
+      // The latest first. The id breaks ties, so the order is always the same.
+      .orderBy(desc(orderBy), desc(issue.id))
       .limit(PAGE_SIZE)
       .offset((page - 1) * PAGE_SIZE),
     db.select({ total: count() }).from(issue).where(where),
@@ -381,7 +389,12 @@ export async function getIssues(
   // ?page=999): ask again, for the last page.
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > lastPage) {
-    return getIssues(projectId, { statuses, assigneeId, page: lastPage });
+    return getIssues(projectId, {
+      statuses,
+      assigneeId,
+      page: lastPage,
+      orderBy,
+    });
   }
 
   return { items, total, page };

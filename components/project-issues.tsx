@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { issue } from "@/db/schema";
 import { IssueFilters } from "@/components/issue-filters";
 import { IssueList } from "@/components/issue-list";
 import { Pagination } from "@/components/pagination";
@@ -30,6 +31,7 @@ export async function ProjectIssues({
       statuses: search.status ? statusFilters[search.status] : undefined,
       assigneeId: search.assignee,
       page: search.page,
+      orderBy: search.sort === "updated" ? issue.updatedAt : undefined,
     }),
   ]);
   const filtered = Boolean(search.status || search.assignee);
@@ -38,7 +40,7 @@ export async function ProjectIssues({
     <div className="flex flex-col gap-4">
       {/* A new key resets the form when Back or a link changes the URL. */}
       <IssueFilters
-        key={`${search.status}-${search.assignee}`}
+        key={`${search.status}-${search.assignee}-${search.sort}`}
         search={search}
         people={people}
       />
